@@ -424,6 +424,16 @@ do
 end
 
 
+do
+  -- nesting of captures too deep
+  local p = m.C(1)
+  for i = 1, 300 do
+    p = m.Ct(p)
+  end
+  checkerr("too deep", p.match, p, "x")
+end
+
+
 -- tests for non-pattern as arguments to pattern functions
 
 p = { ('a' * m.V(1))^-1 } * m.P'b' * { 'a' * m.V(2); m.V(1)^-1 }

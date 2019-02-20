@@ -44,6 +44,7 @@ typedef struct CapState {
   int ptop;  /* index of last argument to 'match' */
   const char *s;  /* original string */
   int valuecached;  /* value stored in cache slot */
+  int reclevel;  /* recursion level */
 } CapState;
 
 

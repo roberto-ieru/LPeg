@@ -296,7 +296,8 @@ const char *match (lua_State *L, const char *o, const char *s, const char *e,
         CapState cs;
         int rem, res, n;
         int fr = lua_gettop(L) + 1;  /* stack index of first result */
-        cs.s = o; cs.L = L; cs.ocap = capture; cs.ptop = ptop;
+        cs.reclevel = 0; cs.L = L;
+        cs.s = o; cs.ocap = capture; cs.ptop = ptop;
         n = runtimecap(&cs, capture + captop, s, &rem);  /* call function */
         captop -= n;  /* remove nested captures */
         ndyncap -= rem;  /* update number of dynamic captures */
