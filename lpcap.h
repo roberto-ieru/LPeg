@@ -1,5 +1,5 @@
 /*
-** $Id: lpcap.h,v 1.3 2016/09/13 17:45:58 roberto Exp $
+** $Id: lpcap.h $
 */
 
 #if !defined(lpcap_h)

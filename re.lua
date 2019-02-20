@@ -1,4 +1,4 @@
--- $Id: re.lua,v 1.46 2018/06/04 16:21:19 roberto Exp $
+-- $Id: re.lua $
 
 -- imported functions and modules
 local tonumber, type, print, error = tonumber, type, print, error

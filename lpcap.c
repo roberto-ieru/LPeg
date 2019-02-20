@@ -1,5 +1,5 @@
 /*
-** $Id: lpcap.c,v 1.6 2015/06/15 16:09:57 roberto Exp $
+** $Id: lpcap.c $
 ** Copyright 2007, Lua.org & PUC-Rio  (see 'lpeg.html' for license)
 */
 

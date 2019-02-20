@@ -1,5 +1,5 @@
 /*
-** $Id: lpvm.c,v 1.9 2016/06/03 20:11:18 roberto Exp $
+** $Id: lpvm.c $
 ** Copyright 2007, Lua.org & PUC-Rio  (see 'lpeg.html' for license)
 */
 

@@ -1,5 +1,5 @@
 /*
-** $Id: lptree.c,v 1.23 2017/12/14 15:30:04 roberto Exp $
+** $Id: lptree.c $
 ** Copyright 2013, Lua.org & PUC-Rio  (see 'lpeg.html' for license)
 */
 

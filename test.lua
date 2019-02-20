@@ -1,6 +1,6 @@
 #!/usr/bin/env lua
 
--- $Id: test.lua,v 1.114 2018/06/04 16:21:19 roberto Exp $
+-- $Id: test.lua $
 
 -- require"strict"    -- just to be pedantic
 
