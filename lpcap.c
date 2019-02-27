@@ -271,15 +271,15 @@ int finddyncap (Capture *cap, Capture *last) {
 
 
 /*
-** Calls a runtime capture. Returns number of captures removed by
-** the call, including the initial Cgroup. (Captures to be added are
-** on the Lua stack.)
+** Calls a runtime capture. Returns number of captures "removed" by the
+** call, that is, those inside the group capture. Captures to be added
+** are on the Lua stack.
 */
 int runtimecap (CapState *cs, Capture *close, const char *s, int *rem) {
   int n, id;
   lua_State *L = cs->L;
   int otop = lua_gettop(L);
-  Capture *open = findopen(close);
+  Capture *open = findopen(close);  /* get open group capture */
   assert(captype(open) == Cgroup);
   id = finddyncap(open, close);  /* get first dynamic capture argument */
   close->kind = Cclose;  /* closes the group */
@@ -299,7 +299,7 @@ int runtimecap (CapState *cs, Capture *close, const char *s, int *rem) {
   }
   else
     *rem = 0;  /* no dynamic captures removed */
-  return close - open;  /* number of captures of all kinds removed */
+  return close - open - 1;  /* number of captures to be removed */
 }
 
 
