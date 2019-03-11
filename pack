@@ -5,8 +5,7 @@ FILES="makefile HISTORY test.lua re.lua lpeg.html re.html lpeg-128.gif \
 NAME=lpeg-$1
 DIRN=versions/$NAME
 mkdir $DIRN
-co $FILES
-mv $FILES $DIRN
+cp $FILES $DIRN
 cd versions
 tar --create --gzip --file=$NAME.tar.gz $NAME
 # scp $NAME.tar.gz obaluae:public_html/lpeg/

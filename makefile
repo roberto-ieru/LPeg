@@ -1,8 +1,8 @@
 LIBNAME = lpeg
 LUADIR = ../lua/
 
-# COPT = -O2 -DNDEBUG
-COPT = -g
+COPT = -O2 -DNDEBUG
+# COPT = -g
 
 CWARNS = -Wall -Wextra -pedantic \
 	-Waggregate-return \
