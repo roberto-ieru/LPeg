@@ -51,9 +51,9 @@
 #endif
 
 
-/* maximum number of rules in a grammar (limited by 'unsigned char') */
+/* maximum number of rules in a grammar (limited by 'unsigned short') */
 #if !defined(MAXRULES)
-#define MAXRULES        250
+#define MAXRULES        1000
 #endif
 
 

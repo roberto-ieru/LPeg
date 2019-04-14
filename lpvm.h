@@ -33,7 +33,8 @@ typedef enum Opcode {
   IFullCapture,  /* complete capture of last 'off' chars */
   IOpenCapture,  /* start a capture */
   ICloseCapture,
-  ICloseRunTime
+  ICloseRunTime,
+  IEmpty  /* to fill empty slots left by optimizations */
 } Opcode;
 
 

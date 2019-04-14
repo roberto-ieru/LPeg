@@ -220,7 +220,7 @@ int checkaux (TTree *tree, int pred) {
       if (checkaux(sib2(tree), pred)) return 1;
       /* else return checkaux(sib1(tree), pred); */
       tree = sib1(tree); goto tailcall;
-    case TCapture: case TGrammar: case TRule:
+    case TCapture: case TGrammar: case TRule: case TXInfo:
       /* return checkaux(sib1(tree), pred); */
       tree = sib1(tree); goto tailcall;
     case TCall:  /* return checkaux(sib2(tree), pred); */
@@ -243,7 +243,7 @@ int fixedlen (TTree *tree) {
       return len;
     case TRep: case TRunTime: case TOpenCall:
       return -1;
-    case TCapture: case TRule: case TGrammar:
+    case TCapture: case TRule: case TGrammar: case TXInfo:
       /* return fixedlen(sib1(tree)); */
       tree = sib1(tree); goto tailcall;
     case TCall: {
@@ -334,7 +334,7 @@ static int getfirst (TTree *tree, const Charset *follow, Charset *firstset) {
       loopset(i, firstset->cs[i] |= follow->cs[i]);
       return 1;  /* accept the empty string */
     }
-    case TCapture: case TGrammar: case TRule: {
+    case TCapture: case TGrammar: case TRule: case TXInfo: {
       /* return getfirst(sib1(tree), follow, firstset); */
       tree = sib1(tree); goto tailcall;
     }
@@ -382,7 +382,7 @@ static int headfail (TTree *tree) {
     case TTrue: case TRep: case TRunTime: case TNot:
     case TBehind:
       return 0;
-    case TCapture: case TGrammar: case TRule: case TAnd:
+    case TCapture: case TGrammar: case TRule: case TXInfo: case TAnd:
       tree = sib1(tree); goto tailcall;  /* return headfail(sib1(tree)); */
     case TCall:
       tree = sib2(tree); goto tailcall;  /* return headfail(sib2(tree)); */
@@ -874,8 +874,10 @@ static void codegrammar (CompileState *compst, TTree *grammar) {
   int start = gethere(compst);  /* here starts the initial rule */
   jumptohere(compst, firstcall);
   for (rule = sib1(grammar); rule->tag == TRule; rule = sib2(rule)) {
+    TTree *r = sib1(rule);
+    assert(r->tag == TXInfo);
     positions[rulenumber++] = gethere(compst);  /* save rule position */
-    codegen(compst, sib1(rule), 0, NOINST, fullset);  /* code rule */
+    codegen(compst, sib1(r), 0, NOINST, fullset);  /* code rule */
     addinstruction(compst, IRet, 0);
   }
   assert(rule->tag == TTrue);
@@ -886,8 +888,8 @@ static void codegrammar (CompileState *compst, TTree *grammar) {
 
 static void codecall (CompileState *compst, TTree *call) {
   int c = addoffsetinst(compst, IOpenCall);  /* to be corrected later */
-  getinstr(compst, c).i.key = sib2(call)->cap;  /* rule number */
-  assert(sib2(call)->tag == TRule);
+  assert(sib1(sib2(call))->tag == TXInfo);
+  getinstr(compst, c).i.key = sib1(sib2(call))->u.n;  /* rule number */
 }
 
 
@@ -971,7 +973,7 @@ static void peephole (CompileState *compst) {
           case IRet: case IFail: case IFailTwice:
           case IEnd: {  /* instructions with unconditional implicit jumps */
             code[i] = code[ft];  /* jump becomes that instruction */
-            code[i + 1].i.code = IAny;  /* 'no-op' for target position */
+            code[i + 1].i.code = IEmpty;  /* 'no-op' for target position */
             break;
           }
           case ICommit: case IPartialCommit:

@@ -25,7 +25,7 @@ const byte numsiblings[] = {
   1,		/* rep */
   2, 2,		/* seq, choice */
   1, 1,		/* not, and */
-  0, 0, 2, 1,  /* call, opencall, rule, grammar */
+  0, 0, 2, 1, 1,  /* call, opencall, rule, prerule, grammar */
   1,  /* behind */
   1, 1  /* capture, runtime capture */
 };
@@ -906,7 +906,7 @@ static int collectrules (lua_State *L, int arg, int *totalsize) {
   int size;  /* accumulator for total size */
   lua_newtable(L);  /* create position table */
   getfirstrule(L, arg, postab);
-  size = 2 + getsize(L, postab + 2);  /* TGrammar + TRule + rule */
+  size = 3 + getsize(L, postab + 2);  /* TGrammar + TRule + TXInfo + rule */
   lua_pushnil(L);  /* prepare to traverse grammar table */
   while (lua_next(L, arg) != 0) {
     if (lua_tonumber(L, -2) == 1 ||
@@ -920,11 +920,11 @@ static int collectrules (lua_State *L, int arg, int *totalsize) {
     lua_pushvalue(L, -2);  /* push key (to insert into position table) */
     lua_pushinteger(L, size);
     lua_settable(L, postab);
-    size += 1 + getsize(L, -1);  /* update size */
+    size += 2 + getsize(L, -1);  /* add 'TRule + TXInfo + rule' to size */
     lua_pushvalue(L, -2);  /* push key (for next lua_next) */
     n++;
   }
-  *totalsize = size + 1;  /* TTrue to finish list of rules */
+  *totalsize = size + 1;  /* space for 'TTrue' finishing list of rules */
   return n;
 }
 
@@ -936,11 +936,13 @@ static void buildgrammar (lua_State *L, TTree *grammar, int frule, int n) {
     int ridx = frule + 2*i + 1;  /* index of i-th rule */
     int rulesize;
     TTree *rn = gettree(L, ridx, &rulesize);
+    TTree *pr = sib1(nd);  /* points to rule's prerule */
     nd->tag = TRule;
     nd->key = 0;  /* will be fixed when rule is used */
-    nd->cap = i;  /* rule number */
-    nd->u.ps = rulesize + 1;  /* point to next rule */
-    memcpy(sib1(nd), rn, rulesize * sizeof(TTree));  /* copy rule */
+    pr->tag = TXInfo;
+    pr->u.n = i;  /* rule number */
+    nd->u.ps = rulesize + 2;  /* point to next rule */
+    memcpy(sib1(pr), rn, rulesize * sizeof(TTree));  /* copy rule */
     mergektable(L, ridx, sib1(nd));  /* merge its ktable into new one */
     nd = sib2(nd);  /* move to next rule */
   }
@@ -976,7 +978,7 @@ static int checkloops (TTree *tree) {
 ** twice in 'passed', there is path from it back to itself without
 ** advancing the subject.
 */
-static int verifyerror (lua_State *L, int *passed, int npassed) {
+static int verifyerror (lua_State *L, unsigned short *passed, int npassed) {
   int i, j;
   for (i = npassed - 1; i >= 0; i--) {  /* search for a repetition */
     for (j = i - 1; j >= 0; j--) {
@@ -1001,8 +1003,8 @@ static int verifyerror (lua_State *L, int *passed, int npassed) {
 ** counts the elements in 'passed'.
 ** Assume ktable at the top of the stack.
 */
-static int verifyrule (lua_State *L, TTree *tree, int *passed, int npassed,
-                       int nb) {
+static int verifyrule (lua_State *L, TTree *tree, unsigned short *passed,
+                                     int npassed, int nb) {
  tailcall:
   switch (tree->tag) {
     case TChar: case TSet: case TAny:
@@ -1014,7 +1016,7 @@ static int verifyrule (lua_State *L, TTree *tree, int *passed, int npassed,
     case TNot: case TAnd: case TRep:
       /* return verifyrule(L, sib1(tree), passed, npassed, 1); */
       tree = sib1(tree); nb = 1; goto tailcall;
-    case TCapture: case TRunTime:
+    case TCapture: case TRunTime: case TXInfo:
       /* return verifyrule(L, sib1(tree), passed, npassed, nb); */
       tree = sib1(tree); goto tailcall;
     case TCall:
@@ -1030,10 +1032,10 @@ static int verifyrule (lua_State *L, TTree *tree, int *passed, int npassed,
       /* return verifyrule(L, sib2(tree), passed, npassed, nb); */
       tree = sib2(tree); goto tailcall;
     case TRule:
-      if (npassed >= MAXRULES)
-        return verifyerror(L, passed, npassed);
+      if (npassed >= MAXRULES)  /* too many steps? */
+        return verifyerror(L, passed, npassed);  /* error */
       else {
-        passed[npassed++] = tree->key;
+        passed[npassed++] = tree->key;  /* add rule to path */
         /* return verifyrule(L, sib1(tree), passed, npassed); */
         tree = sib1(tree); goto tailcall;
       }
@@ -1045,7 +1047,7 @@ static int verifyrule (lua_State *L, TTree *tree, int *passed, int npassed,
 
 
 static void verifygrammar (lua_State *L, TTree *grammar) {
-  int passed[MAXRULES];
+  unsigned short passed[MAXRULES];
   TTree *rule;
   /* check left-recursive rules */
   for (rule = sib1(grammar); rule->tag == TRule; rule = sib2(rule)) {

@@ -406,7 +406,7 @@ assert(p:match('abcx') == 5 and p:match('ayzx') == 5 and not p:match'abc')
 
 
 do
-  -- large dynamic Cc
+  print "testing large dynamic Cc"
   local lim = 2^16 - 1
   local c = 0
   local function seq (n) 
@@ -985,10 +985,10 @@ for i = 1, 10 do
   assert(p:match("aaaaaaaaaaa") == 11 - i + 1)
 end
 
-print"+"
 
 
--- tests for back references
+print "testing back references"
+
 checkerr("back reference 'x' not found", m.match, m.Cb('x'), '')
 checkerr("back reference 'b' not found", m.match, m.Cg(1, 'a') * m.Cb('b'), 'a')
 
@@ -1171,9 +1171,28 @@ t = {p:match('abacc')}
 checkeq(t, {'a', 'aa', 20, 'a', 'aaa', 'aaa'})
 
 
+do  print"testing large grammars"
+  local lim = 1000    -- number of rules
+  local t = {}
+
+  for i = 3, lim do
+    t[i] = m.V(i - 1)   -- each rule calls previous one
+  end
+  t[1] = m.V(lim)    -- start on last rule
+  t[2] = m.C("alo")  -- final rule
+
+  local P = m.P(t)   -- build grammar
+  assert(P:match("alo") == "alo")
+
+  t[#t + 1] = m.P("x")   -- one more rule...
+  checkerr("too many rules", m.P, t)
+end
+
+
 -------------------------------------------------------------------
 -- Tests for 're' module
 -------------------------------------------------------------------
+print"testing 're' module"
 
 local re = require "re"
 
