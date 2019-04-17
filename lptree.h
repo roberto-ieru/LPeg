@@ -18,6 +18,9 @@ typedef enum TTag {
   TAny,
   TTrue,
   TFalse,
+  TUTFR,  /* range of UTF-8 codepoints; 'n' has initial codepoint;
+             'cap' has length; 'key' has first byte;
+             extra info is similar for end codepoint */
   TRep,  /* 'sib1'* */
   TSeq,  /* 'sib1' 'sib2' */
   TChoice,  /* 'sib1' / 'sib2' */
@@ -26,8 +29,9 @@ typedef enum TTag {
   TCall,  /* ktable[key] is rule's key; 'sib2' is rule being called */
   TOpenCall,  /* ktable[key] is rule's key */
   TRule,  /* ktable[key] is rule's key (but key == 0 for unused rules);
-             'sib1' is rule's pattern pre-rule; 'sib2' is next rule; */
-  TXInfo,  /* extra info; 'n' is rule's sequential number */
+             'sib1' is rule's pattern pre-rule; 'sib2' is next rule;
+             extra info 'n' is rule's sequential number */
+  TXInfo,  /* extra info */
   TGrammar,  /* 'sib1' is initial (and first) rule */
   TBehind,  /* 'sib1' is pattern, 'n' is how much to go back */
   TCapture,  /* captures: 'cap' is kind of capture (enum 'CapKind');

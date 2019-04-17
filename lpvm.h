@@ -17,6 +17,7 @@ typedef enum Opcode {
   ITestChar,  /* if char != aux, jump to 'offset' */
   ITestSet,  /* if char not in buff, jump to 'offset' */
   ISpan,  /* read a span of chars in buff */
+  IUTFR,  /* if codepoint not in range [offset, utf_to], fail */
   IBehind,  /* walk back 'aux' characters (fail if not possible) */
   IRet,  /* return from a rule */
   IEnd,  /* end of pattern */
@@ -48,6 +49,10 @@ typedef union Instruction {
   int offset;
   byte buff[1];
 } Instruction;
+
+
+/* extract 24-bit value from an instruction */
+#define utf_to(inst)	(((inst)->i.key << 8) | (inst)->i.aux)
 
 
 void printpatt (Instruction *p, int n);

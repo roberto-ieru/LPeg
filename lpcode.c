@@ -196,7 +196,7 @@ int hascaptures (TTree *tree) {
 int checkaux (TTree *tree, int pred) {
  tailcall:
   switch (tree->tag) {
-    case TChar: case TSet: case TAny:
+    case TChar: case TSet: case TAny: case TUTFR:
     case TFalse: case TOpenCall:
       return 0;  /* not nullable */
     case TRep: case TTrue:
@@ -239,6 +239,8 @@ int fixedlen (TTree *tree) {
   switch (tree->tag) {
     case TChar: case TSet: case TAny:
       return len + 1;
+    case TUTFR:
+      return (tree->cap == sib1(tree)->cap) ? len + tree->cap : -1;
     case TFalse: case TTrue: case TNot: case TAnd: case TBehind:
       return len;
     case TRep: case TRunTime: case TOpenCall:
@@ -296,6 +298,13 @@ static int getfirst (TTree *tree, const Charset *follow, Charset *firstset) {
   switch (tree->tag) {
     case TChar: case TSet: case TAny: {
       tocharset(tree, firstset);
+      return 0;
+    }
+    case TUTFR: {
+      int c;
+      loopset(i, firstset->cs[i] = 0);  /* erase all chars */
+      for (c = tree->key; c <= sib1(tree)->key; c++)
+        setchar(firstset->cs, c);
       return 0;
     }
     case TTrue: {
@@ -380,7 +389,7 @@ static int headfail (TTree *tree) {
     case TChar: case TSet: case TAny: case TFalse:
       return 1;
     case TTrue: case TRep: case TRunTime: case TNot:
-    case TBehind:
+    case TBehind: case TUTFR:
       return 0;
     case TCapture: case TGrammar: case TRule: case TXInfo: case TAnd:
       tree = sib1(tree); goto tailcall;  /* return headfail(sib1(tree)); */
@@ -407,7 +416,7 @@ static int headfail (TTree *tree) {
 static int needfollow (TTree *tree) {
  tailcall:
   switch (tree->tag) {
-    case TChar: case TSet: case TAny:
+    case TChar: case TSet: case TAny: case TUTFR:
     case TFalse: case TTrue: case TAnd: case TNot:
     case TRunTime: case TGrammar: case TCall: case TBehind:
       return 0;
@@ -418,7 +427,7 @@ static int needfollow (TTree *tree) {
     case TSeq:
       tree = sib2(tree); goto tailcall;
     default: assert(0); return 0;
-  } 
+  }
 }
 
 /* }====================================================== */
@@ -441,6 +450,7 @@ int sizei (const Instruction *i) {
     case ITestSet: return CHARSETINSTSIZE + 1;
     case ITestChar: case ITestAny: case IChoice: case IJmp: case ICall:
     case IOpenCall: case ICommit: case IPartialCommit: case IBackCommit:
+    case IUTFR:
       return 2;
     default: return 1;
   }
@@ -515,6 +525,16 @@ static int addoffsetinst (CompileState *compst, Opcode op) {
 */
 static void setoffset (CompileState *compst, int instruction, int offset) {
   getinstr(compst, instruction + 1).offset = offset;
+}
+
+
+static void codeutfr (CompileState *compst, TTree *tree) {
+  int i = addoffsetinst(compst, IUTFR);
+  int to = sib1(tree)->u.n;
+  assert(sib1(tree)->tag == TXInfo);
+  getinstr(compst, i + 1).offset = tree->u.n;
+  getinstr(compst, i).i.aux = to & 0xff;
+  getinstr(compst, i).i.key = to >> 8;
 }
 
 
@@ -665,11 +685,11 @@ static void codebehind (CompileState *compst, TTree *tree) {
 
 /*
 ** Choice; optimizations:
-** - when p1 is headfail or
-** when first(p1) and first(p2) are disjoint, than
-** a character not in first(p1) cannot go to p1, and a character
-** in first(p1) cannot go to p2 (at it is not in first(p2)).
-** (The optimization is not valid if p1 accepts the empty string,
+** - when p1 is headfail or when first(p1) and first(p2) are disjoint,
+** than a character not in first(p1) cannot go to p1 and a character
+** in first(p1) cannot go to p2, either because p1 will accept
+** (headfail) or because it is not in first(p2) (disjoint).
+** (The second case is not valid if p1 accepts the empty string,
 ** as then there is no character at all...)
 ** - when p2 is empty and opt is true; a IPartialCommit can reuse
 ** the Choice already active in the stack.
@@ -686,7 +706,7 @@ static void codechoice (CompileState *compst, TTree *p1, TTree *p2, int opt,
     int jmp = NOINST;
     codegen(compst, p1, 0, test, fl);
     if (!emptyp2)
-      jmp = addoffsetinst(compst, IJmp); 
+      jmp = addoffsetinst(compst, IJmp);
     jumptohere(compst, test);
     codegen(compst, p2, opt, NOINST, fl);
     jumptohere(compst, jmp);
@@ -697,7 +717,7 @@ static void codechoice (CompileState *compst, TTree *p1, TTree *p2, int opt,
     codegen(compst, p1, 1, NOINST, fullset);
   }
   else {
-    /* <p1 / p2> == 
+    /* <p1 / p2> ==
         test(first(p1)) -> L1; choice L1; <p1>; commit L2; L1: <p2>; L2: */
     int pcommit;
     int test = codetestset(compst, &cs1, e1);
@@ -927,6 +947,7 @@ static void codegen (CompileState *compst, TTree *tree, int opt, int tt,
     case TSet: codecharset(compst, treebuffer(tree), tt); break;
     case TTrue: break;
     case TFalse: addinstruction(compst, IFail, 0); break;
+    case TUTFR: codeutfr(compst, tree); break;
     case TChoice: codechoice(compst, sib1(tree), sib2(tree), opt, fl); break;
     case TRep: coderep(compst, sib1(tree), opt, fl); break;
     case TBehind: codebehind(compst, tree); break;

@@ -56,7 +56,7 @@ void printinst (const Instruction *op, const Instruction *p) {
   const char *const names[] = {
     "any", "char", "set",
     "testany", "testchar", "testset",
-    "span", "behind",
+    "span", "utf-range", "behind",
     "ret", "end",
     "choice", "jmp", "call", "open_call",
     "commit", "partial_commit", "back_commit", "failtwice", "fail", "giveup",
@@ -66,11 +66,15 @@ void printinst (const Instruction *op, const Instruction *p) {
   printf("%02ld: %s ", (long)(p - op), names[p->i.code]);
   switch ((Opcode)p->i.code) {
     case IChar: {
-      printf("'%c'", p->i.aux);
+      printf("'%c' (%02x)", p->i.aux, p->i.aux);
       break;
     }
     case ITestChar: {
-      printf("'%c'", p->i.aux); printjmp(op, p);
+      printf("'%c' (%02x)", p->i.aux, p->i.aux); printjmp(op, p);
+      break;
+    }
+    case IUTFR: {
+      printf("%d - %d", p[1].offset, utf_to(p));
       break;
     }
     case IFullCapture: {
@@ -148,7 +152,7 @@ void printcaplist (Capture *cap, Capture *limit) {
 
 static const char *tagnames[] = {
   "char", "set", "any",
-  "true", "false",
+  "true", "false", "utf8.range",
   "rep",
   "seq", "choice",
   "not", "and",
@@ -175,6 +179,13 @@ void printtree (TTree *tree, int ident) {
     case TSet: {
       printcharset(treebuffer(tree));
       printf("\n");
+      break;
+    }
+    case TUTFR: {
+      assert(sib1(tree)->tag == TXInfo);
+      printf(" %d (%02x %d) - %d (%02x %d) \n",
+        tree->u.n, tree->key, tree->cap,
+        sib1(tree)->u.n, sib1(tree)->key, sib1(tree)->cap);
       break;
     }
     case TOpenCall: case TCall: {

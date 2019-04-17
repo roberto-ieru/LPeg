@@ -107,6 +107,9 @@ for creating patterns:
   <td>Matches any character in <code>string</code> (Set)</td></tr>
 <tr><td><a href="#op-r"><code>lpeg.R("<em>xy</em>")</code></a></td>
   <td>Matches any character between <em>x</em> and <em>y</em> (Range)</td></tr>
+<tr><td><a href="#op-utfR"><code>lpeg.utfR(cp1, cp2)</code></a></td>
+  <td>Matches an UTF-8 code point between <code>cp1</code> and
+  <code>cp2</code></td></tr>
 <tr><td><a href="#op-pow"><code>patt^n</code></a></td>
   <td>Matches at least <code>n</code> repetitions of <code>patt</code></td></tr>
 <tr><td><a href="#op-pow"><code>patt^-n</code></a></td>
@@ -326,6 +329,15 @@ then <code>lpeg.P(s)</code> is equivalent to <code>lpeg.S(s)</code>
 which is equivalent to <code>lpeg.R(s..s)</code>.
 Note also that both <code>lpeg.S("")</code> and <code>lpeg.R()</code>
 are patterns that always fail.
+</p>
+
+
+<h3><a name="op-utfR"></a><code>lpeg.utfR (cp1, cp2)</code></h3>
+<p>
+Returns a pattern that matches a valid UTF-8 byte sequence
+representing a code point in the range <code>[cp1, cp2]</code>.
+The range is limited by the natural Unicode limit of 0x10FFFF,
+but may include surrogates.
 </p>
 
 

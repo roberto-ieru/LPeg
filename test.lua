@@ -48,7 +48,6 @@ end
 
 print"General tests for LPeg library"
 
-assert(type(m.version()) == "string")
 print("version " .. m.version())
 assert(m.type("alo") ~= "pattern")
 assert(m.type(io.input) ~= "pattern")
@@ -1187,6 +1186,63 @@ do  print"testing large grammars"
   t[#t + 1] = m.P("x")   -- one more rule...
   checkerr("too many rules", m.P, t)
 end
+
+
+print "testing UTF-8 ranges"
+
+do   -- a few typical UTF-8 ranges
+  local p = m.utfR(0x410, 0x44f)^1 / "cyr: %0"
+          + m.utfR(0x4e00, 0x9fff)^1 / "cjk: %0"
+          + m.utfR(0x1F600, 0x1F64F)^1 / "emot: %0"
+          + m.utfR(0, 0x7f)^1 / "ascii: %0"
+          + m.utfR(0, 0x10ffff) / "other: %0"
+
+  p = m.Ct(p^0) * -m.P(1)
+
+  local cyr = "ждюя"
+  local emot = "\240\159\152\128\240\159\153\128"   --  😀🙀
+  local cjk = "专举乸"
+  local ascii = "alo"
+  local last = "\244\143\191\191"                -- U+10FFFF
+
+  local s = cyr .. "—" .. emot .. "—" .. cjk .. "—" .. ascii .. last
+  t = (p:match(s))
+
+  assert(t[1] == "cyr: " .. cyr and t[2] == "other: —" and
+         t[3] == "emot: " .. emot and t[4] == "other: —" and
+         t[5] == "cjk: " .. cjk and t[6] == "other: —" and
+         t[7] == "ascii: " .. ascii and t[8] == "other: " .. last and
+         t[9] == nil)
+end
+
+
+do   -- valid and invalid code points
+  local p = m.utfR(0, 0x10ffff)^0
+  assert(p:match("汉字\128") == #"汉字" + 1)
+  assert(p:match("\244\159\191") == 1)
+  assert(p:match("\244\159\191\191") == 1)
+  assert(p:match("\255") == 1)
+
+   -- basic errors
+  checkerr("empty range", m.utfR, 1, 0)
+  checkerr("invalid code point", m.utfR, 1, 0x10ffff + 1)
+end
+
+
+do  -- back references (fixed width)
+  -- match a byte after a CJK point
+  local p = m.B(m.utfR(0x4e00, 0x9fff)) * m.C(1)
+  p = m.P{ p + m.P(1) * m.V(1) }   -- search for 'p'
+  assert(p:match("ab д 专X x") == "X")
+
+  -- match a byte after a hebrew point
+  local p = m.B(m.utfR(0x5d0, 0x5ea)) * m.C(1)
+  p = m.P(#"ש") * p
+  assert(p:match("שX") == "X")
+
+  checkerr("fixed length", m.B, m.utfR(0, 0x10ffff))
+end
+
 
 
 -------------------------------------------------------------------

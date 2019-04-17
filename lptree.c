@@ -21,7 +21,7 @@
 /* number of siblings for each tree */
 const byte numsiblings[] = {
   0, 0, 0,	/* char, set, any */
-  0, 0,		/* true, false */	
+  0, 0, 0,	/* true, false, utf-range */
   1,		/* rep */
   2, 2,		/* seq, choice */
   1, 1,		/* not, and */
@@ -675,6 +675,56 @@ static int lp_range (lua_State *L) {
 
 
 /*
+** Fills a tree node with basic information about the UTF-8 code point
+** 'cpu': its value in 'n', its length in 'cap', and its first byte in
+** 'key'
+*/
+static void codeutftree (lua_State *L, TTree *t, lua_Unsigned cpu, int arg) {
+  int len, fb, cp;
+  cp = (int)cpu;
+  if (cp <= 0x7f) {  /* one byte? */
+    len = 1;
+    fb = cp;
+  } else if (cp <= 0x7ff) {
+    len = 2;
+    fb = 0xC0 | (cp >> 6);
+  } else if (cp <= 0xffff) {
+    len = 3;
+    fb = 0xE0 | (cp >> 12);
+  }
+  else {
+    luaL_argcheck(L, cpu <= 0x10ffffu, arg, "invalid code point");
+    len = 4;
+    fb = 0xF0 | (cp >> 18);
+  }
+  t->u.n = cp;
+  t->cap = len;
+  t->key = fb;
+}
+
+
+static int lp_utfr (lua_State *L) {
+  lua_Unsigned from = (lua_Unsigned)luaL_checkinteger(L, 1);
+  lua_Unsigned to = (lua_Unsigned)luaL_checkinteger(L, 2);
+  luaL_argcheck(L, from <= to, 2, "empty range");
+  if (to <= 0x7f) {  /* ascii range? */
+    TTree *tree = newcharset(L);  /* code it as a regular charset */
+    unsigned int f;
+    for (f = (int)from; f <= to; f++)
+      setchar(treebuffer(tree), f);
+  }
+  else {  /* multi-byte utf-8 range */
+    TTree *tree = newtree(L, 2);
+    tree->tag = TUTFR;
+    codeutftree(L, tree, from, 1);
+    sib1(tree)->tag = TXInfo;
+    codeutftree(L, sib1(tree), to, 2);
+  }
+  return 1;
+}
+
+
+/*
 ** Look-behind predicate
 */
 static int lp_behind (lua_State *L) {
@@ -1008,7 +1058,7 @@ static int verifyrule (lua_State *L, TTree *tree, unsigned short *passed,
  tailcall:
   switch (tree->tag) {
     case TChar: case TSet: case TAny:
-    case TFalse:
+    case TFalse: case TUTFR:
       return nb;  /* cannot pass from here */
     case TTrue:
     case TBehind:  /* look-behind cannot have calls */
@@ -1271,6 +1321,7 @@ static struct luaL_Reg pattreg[] = {
   {"P", lp_P},
   {"S", lp_set},
   {"R", lp_range},
+  {"utfR", lp_utfr},
   {"locale", lp_locale},
   {"version", lp_version},
   {"setmaxstack", lp_setmax},
