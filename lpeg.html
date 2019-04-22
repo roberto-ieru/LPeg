@@ -22,7 +22,7 @@
   </div>
   <div id="product_name"><big><strong>LPeg</strong></big></div>
   <div id="product_description">
-     Parsing Expression Grammars For Lua, version 1.0
+     Parsing Expression Grammars For Lua, version 1.1
   </div>
 </div> <!-- id="product" -->
 
@@ -145,7 +145,7 @@ so, it succeeds only at the end of the subject.
 LPeg also offers the <a href="re.html"><code>re</code> module</a>,
 which implements patterns following a regular-expression style
 (e.g., <code>[09]+</code>).
-(This module is 260 lines of Lua code,
+(This module is 270 lines of Lua code,
 and of course it uses LPeg to parse regular expressions and
 translate them to regular LPeg patterns.)
 </p>
@@ -167,7 +167,7 @@ or the <a href="#captures">captured values</a>
 <p>
 An optional numeric argument <code>init</code> makes the match
 start at that position in the subject string.
-As usual in Lua libraries,
+As in the Lua standard libraries,
 a negative value counts from the end.
 </p>
 
@@ -191,9 +191,9 @@ returns the string <code>"pattern"</code>.
 Otherwise returns nil.
 </p>
 
-<h3><a name="f-version"></a><code>lpeg.version ()</code></h3>
+<h3><a name="f-version"></a><code>lpeg.version</code></h3>
 <p>
-Returns a string with the running version of LPeg.
+A string (not a function) with the running version of LPeg.
 </p>
 
 <h3><a name="f-setstack"></a><code>lpeg.setmaxstack (max)</code></h3>

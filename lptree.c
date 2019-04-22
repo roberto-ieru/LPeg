@@ -1247,12 +1247,6 @@ static int lp_setmax (lua_State *L) {
 }
 
 
-static int lp_version (lua_State *L) {
-  lua_pushstring(L, VERSION);
-  return 1;
-}
-
-
 static int lp_type (lua_State *L) {
   if (testpattern(L, 1))
     lua_pushliteral(L, "pattern");
@@ -1323,7 +1317,7 @@ static struct luaL_Reg pattreg[] = {
   {"R", lp_range},
   {"utfR", lp_utfr},
   {"locale", lp_locale},
-  {"version", lp_version},
+  {"version", NULL},
   {"setmaxstack", lp_setmax},
   {"type", lp_type},
   {NULL, NULL}
@@ -1352,6 +1346,8 @@ int luaopen_lpeg (lua_State *L) {
   luaL_newlib(L, pattreg);
   lua_pushvalue(L, -1);
   lua_setfield(L, -3, "__index");
+  lua_pushliteral(L, "LPeg " VERSION);
+  lua_setfield(L, -2, "version");
   return 1;
 }
 
