@@ -320,6 +320,8 @@ const char *match (lua_State *L, const char *o, const char *s, const char *e,
       case IBackCommit: {
         assert(stack > getstackbase(L, ptop) && (stack - 1)->s != NULL);
         s = (--stack)->s;
+        if (ndyncap > 0)  /* are there matchtime captures? */
+          ndyncap -= removedyncap(L, capture, stack->caplevel, captop);
         captop = stack->caplevel;
         p += getoffset(p);
         continue;

@@ -27,7 +27,7 @@ typedef enum Opcode {
   IOpenCall,  /* call rule number 'key' (must be closed to a ICall) */
   ICommit,  /* pop choice and jump to 'offset' */
   IPartialCommit,  /* update top choice to current position and jump */
-  IBackCommit,  /* "fails" but jump to its own 'offset' */
+  IBackCommit,  /* backtrack like "fail" but jump to its own 'offset' */
   IFailTwice,  /* pop one choice and then fail */
   IFail,  /* go back to saved state on choice and jump to saved offset */
   IGiveup,  /* internal use */

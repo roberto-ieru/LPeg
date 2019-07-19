@@ -1032,6 +1032,17 @@ local function id (s, i, ...)
   return true, ...
 end
 
+do   -- run-time capture in an end predicate (should discard its value)
+  local x = 0
+  function foo (s, i)
+      x = x + 1
+      return true, x
+  end
+
+  local p = #(m.Cmt("", foo) * "xx") * m.Cmt("", foo)
+  assert(p:match("xx") == 2)
+end
+
 assert(m.Cmt(m.Cs((m.Cmt(m.S'abc' / { a = 'x', c = 'y' }, id) +
               m.R'09'^1 /  string.char +
               m.P(1))^0), id):match"acb98+68c" == "xyb\98+\68y")
