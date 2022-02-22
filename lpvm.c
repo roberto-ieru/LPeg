@@ -80,16 +80,25 @@ typedef struct Stack {
 ** array, it is simpler to ensure the array always has at least one free
 ** slot upfront and check its size later.)
 */
+
+/* new size in number of elements cannot overflow integers, and new
+   size in bytes cannot overflow size_t. */
+#define MAXNEWSIZE  \
+    (((size_t)INT_MAX) <= (~(size_t)0 / sizeof(Capture)) ?  \
+     ((size_t)INT_MAX) : (~(size_t)0 / sizeof(Capture)))
+
 static Capture *growcap (lua_State *L, Capture *capture, int *capsize,
                                        int captop, int n, int ptop) {
   if (*capsize - captop > n)
     return capture;  /* no need to grow array */
   else {  /* must grow */
     Capture *newc;
-    int newsize = captop + n + 1;  /* minimum size needed */
-    if (newsize < INT_MAX/((int)sizeof(Capture) * 2))
+    unsigned int newsize = captop + n + 1;  /* minimum size needed */
+    if (newsize < MAXNEWSIZE / 2)
       newsize *= 2;  /* twice that size, if not too big */
-    else if (newsize >= INT_MAX/((int)sizeof(Capture)))
+    else if (newsize < (MAXNEWSIZE / 9) * 8)
+      newsize += newsize / 8;  /* else, try 9/8 that size */
+    else
       luaL_error(L, "too many captures");
     newc = (Capture *)lua_newuserdata(L, newsize * sizeof(Capture));
     memcpy(newc, capture, captop * sizeof(Capture));
@@ -329,7 +338,7 @@ const char *match (lua_State *L, const char *o, const char *s, const char *e,
       case IFailTwice:
         assert(stack > getstackbase(L, ptop));
         stack--;
-        /* go through */
+        /* FALLTHROUGH */
       case IFail:
       fail: { /* pattern failed: try to backtrack */
         do {  /* remove pending calls */
