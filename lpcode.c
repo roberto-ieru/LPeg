@@ -365,9 +365,8 @@ static int getfirst (TTree *tree, const Charset *follow, Charset *firstset) {
       if (tocharset(sib1(tree), firstset)) {
         cs_complement(firstset);
         return 1;
-      }
-      /* else go through */
-    }
+      }  /* else */
+    }    /* FALLTHROUGH */
     case TBehind: {  /* instruction gives no new information */
       /* call 'getfirst' only to check for math-time captures */
       int e = getfirst(sib1(tree), follow, firstset);

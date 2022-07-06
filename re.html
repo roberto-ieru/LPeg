@@ -423,6 +423,7 @@ primary         &lt;- '(' exp ')' / string / class / defined
                  / '=' name
                  / '{}'
                  / '{~' exp '~}'
+                 / '{|' exp '|}'
                  / '{' exp '}'
                  / '.'
                  / name S !arrow
@@ -436,7 +437,7 @@ item            &lt;- defined / range / .
 range           &lt;- . '-' [^]]
 
 S               &lt;- (%s / '--' [^%nl]*)*   -- spaces and comments
-name            &lt;- [A-Za-z][A-Za-z0-9_]*
+name            &lt;- [A-Za-z_][A-Za-z0-9_]*
 arrow           &lt;- '&lt;-'
 num             &lt;- [0-9]+
 string          &lt;- '"' [^"]* '"' / "'" [^']* "'"
