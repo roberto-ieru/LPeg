@@ -813,7 +813,9 @@ static int lp_divcapture (lua_State *L) {
       tree->key = n;
       return 1;
     }
-    default: return luaL_argerror(L, 2, "invalid replacement value");
+    default:
+      return luaL_error(L, "unexpected %s as 2nd operand to LPeg '/'",
+                           luaL_typename(L, 2));
   }
 }
 
