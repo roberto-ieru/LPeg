@@ -94,8 +94,8 @@ static Capture *growcap (lua_State *L, Capture *capture, int *capsize,
   else {  /* must grow */
     Capture *newc;
     unsigned int newsize = captop + n + 1;  /* minimum size needed */
-    if (newsize < MAXNEWSIZE / 2)
-      newsize *= 2;  /* twice that size, if not too big */
+    if (newsize < (MAXNEWSIZE / 3) * 2)
+      newsize += newsize / 2;  /* 1.5 that size, if not too big */
     else if (newsize < (MAXNEWSIZE / 9) * 8)
       newsize += newsize / 8;  /* else, try 9/8 that size */
     else
