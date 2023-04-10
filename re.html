@@ -10,7 +10,6 @@
 </head>
 <body>
 
-<!-- $Id: re.html $ -->
 
 <div id="container">
 	
@@ -95,7 +94,7 @@ equivalent to <code>p / defs[name]</code></td></tr>
 equivalent to <code>lpeg.Cmt(p, defs[name])</code></td></tr>
 <tr><td><code>p ~&gt; name</code></td> <td>fold capture
 equivalent to <code>lpeg.Cf(p, defs[name])</code></td></tr>
-<tr><td><code>& p</code></td> <td>and predicate</td></tr>
+<tr><td><code>&amp; p</code></td> <td>and predicate</td></tr>
 <tr><td><code>! p</code></td> <td>not predicate</td></tr>
 <tr><td><code>p1 p2</code></td> <td>concatenation</td></tr>
 <tr><td><code>p1 / p2</code></td> <td>ordered choice</td></tr>
@@ -103,7 +102,7 @@ equivalent to <code>lpeg.Cf(p, defs[name])</code></td></tr>
 </tbody></table>
 <p>
 Any space appearing in a syntax description can be
-replaced by zero or more space characters and Lua-style comments
+replaced by zero or more space characters and Lua-style short comments
 (<code>--</code> until end of line).
 </p>
 
@@ -329,7 +328,7 @@ respecting the indentation:
 <pre class="example">
 p = re.compile[[
   block &lt;- {| {:ident:' '*:} line
-           ((=ident !' ' line) / &(=ident ' ') block)* |}
+           ((=ident !' ' line) / &amp;(=ident ' ') block)* |}
   line &lt;- {[^%nl]*} %nl
 ]]
 </pre>
@@ -453,7 +452,7 @@ print(re.match(p, p))   -- a self description must match itself
 <h2><a name="license">License</a></h2>
 
 <p>
-Copyright &copy; 2008-2015 Lua.org, PUC-Rio.
+Copyright &copy; 2008-2023 Lua.org, PUC-Rio.
 </p>
 <p>
 Permission is hereby granted, free of charge,

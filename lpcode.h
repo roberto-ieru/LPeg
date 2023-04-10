@@ -1,6 +1,3 @@
-/*
-** $Id: lpcode.h $
-*/
 
 #if !defined(lpcode_h)
 #define lpcode_h

@@ -10,7 +10,6 @@
 </head>
 <body>
 
-<!-- $Id: lpeg.html $ -->
 
 <div id="container">
 	
@@ -664,10 +663,10 @@ LPeg does not specify when (and if) it evaluates its captures.
 consider the pattern <code>lpeg.P"a" / func / 0</code>.
 Because the "division" by 0 instructs LPeg to throw away the
 results from the pattern,
-LPeg may or may not call <code>func</code>.)
+it is not specified whether LPeg will call <code>func</code>.)
 Therefore, captures should avoid side effects.
 Moreover,
-most captures cannot affect the way a pattern matches a subject.
+captures cannot affect the way a pattern matches a subject.
 The only exception to this rule is the
 so-called <a href="#matchtime"><em>match-time capture</em></a>.
 When a match-time capture matches,
@@ -1175,91 +1174,6 @@ local record = lpeg.Ct(field * (',' * field)^0) * (lpeg.P'\n' + -1)
 </pre>
 
 
-<h3>UTF-8 and Latin 1</h3>
-<p>
-It is not difficult to use LPeg to convert a string from
-UTF-8 encoding to Latin 1 (ISO 8859-1):
-</p>
-
-<pre class="example">
--- convert a two-byte UTF-8 sequence to a Latin 1 character
-local function f2 (s)
-  local c1, c2 = string.byte(s, 1, 2)
-  return string.char(c1 * 64 + c2 - 12416)
-end
-
-local utf8 = lpeg.R("\0\127")
-           + lpeg.R("\194\195") * lpeg.R("\128\191") / f2
-
-local decode_pattern = lpeg.Cs(utf8^0) * -1
-</pre>
-<p>
-In this code,
-the definition of UTF-8 is already restricted to the
-Latin 1 range (from 0 to 255).
-Any encoding outside this range (as well as any invalid encoding)
-will not match that pattern.
-</p>
-
-<p>
-As the definition of <code>decode_pattern</code> demands that
-the pattern matches the whole input (because of the -1 at its end),
-any invalid string will simply fail to match,
-without any useful information about the problem.
-We can improve this situation redefining <code>decode_pattern</code>
-as follows:
-</p>
-<pre class="example">
-local function er (_, i) error("invalid encoding at position " .. i) end
-
-local decode_pattern = lpeg.Cs(utf8^0) * (-1 + lpeg.P(er))
-</pre>
-<p>
-Now, if the pattern <code>utf8^0</code> stops
-before the end of the string,
-an appropriate error function is called.
-</p>
-
-
-<h3>UTF-8 and Unicode</h3>
-<p>
-We can extend the previous patterns to handle all Unicode code points.
-Of course,
-we cannot translate them to Latin 1 or any other one-byte encoding.
-Instead, our translation results in a array with the code points
-represented as numbers.
-The full code is here:
-</p>
-<pre class="example">
--- decode a two-byte UTF-8 sequence
-local function f2 (s)
-  local c1, c2 = string.byte(s, 1, 2)
-  return c1 * 64 + c2 - 12416
-end
-
--- decode a three-byte UTF-8 sequence
-local function f3 (s)
-  local c1, c2, c3 = string.byte(s, 1, 3)
-  return (c1 * 64 + c2) * 64 + c3 - 925824
-end
-
--- decode a four-byte UTF-8 sequence
-local function f4 (s)
-  local c1, c2, c3, c4 = string.byte(s, 1, 4)
-  return ((c1 * 64 + c2) * 64 + c3) * 64 + c4 - 63447168
-end
-
-local cont = lpeg.R("\128\191")   -- continuation byte
-
-local utf8 = lpeg.R("\0\127") / string.byte
-           + lpeg.R("\194\223") * cont / f2
-           + lpeg.R("\224\239") * cont * cont / f3
-           + lpeg.R("\240\244") * cont * cont * cont / f4
-
-local decode_pattern = lpeg.Ct(utf8^0) * -1
-</pre>
-
-
 <h3>Lua's long strings</h3>
 <p>
 A long string in Lua starts with the pattern <code>[=*[</code>
@@ -1416,7 +1330,7 @@ the following command is all you need to install LPeg:
 <h2><a name="license">License</a></h2>
 
 <p>
-Copyright &copy; 2007-2019 Lua.org, PUC-Rio.
+Copyright &copy; 2007-2023 Lua.org, PUC-Rio.
 </p>
 <p>
 Permission is hereby granted, free of charge,

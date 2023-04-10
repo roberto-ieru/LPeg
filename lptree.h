@@ -1,6 +1,3 @@
-/*  
-** $Id: lptree.h $
-*/
 
 #if !defined(lptree_h)
 #define lptree_h

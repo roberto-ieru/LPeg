@@ -1,6 +1,3 @@
-/*
-** $Id: lpcap.h $
-*/
 
 #if !defined(lpcap_h)
 #define lpcap_h

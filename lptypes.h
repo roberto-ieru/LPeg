@@ -1,7 +1,6 @@
 /*
-** $Id: lptypes.h $
 ** LPeg - PEG pattern matching for Lua
-** Copyright 2007-2019, Lua.org & PUC-Rio  (see 'lpeg.html' for license)
+** Copyright 2007-2023, Lua.org & PUC-Rio  (see 'lpeg.html' for license)
 ** written by Roberto Ierusalimschy
 */
 

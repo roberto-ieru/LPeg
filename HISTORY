@@ -1,4 +1,10 @@
-HISTORY for LPeg 1.0.2
+HISTORY for LPeg 1.1.0
+
+* Changes from version 1.0.2 to 1.1.0
+  ---------------------------------
+  + UTF-8 ranges
+  + Larger limit for number of rules in a grammar
+  + bug fixes
 
 * Changes from version 1.0.1 to 1.0.2
   ---------------------------------

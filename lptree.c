@@ -1,7 +1,3 @@
-/*
-** $Id: lptree.c $
-** Copyright 2013, Lua.org & PUC-Rio  (see 'lpeg.html' for license)
-*/
 
 #include <ctype.h>
 #include <limits.h>

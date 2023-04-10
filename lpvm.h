@@ -1,6 +1,3 @@
-/*
-** $Id: lpvm.h $
-*/
 
 #if !defined(lpvm_h)
 #define lpvm_h

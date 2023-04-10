@@ -1,7 +1,3 @@
-/*
-** $Id: lpprint.h $
-*/
-
 
 #if !defined(lpprint_h)
 #define lpprint_h

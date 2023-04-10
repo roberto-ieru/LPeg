@@ -1,4 +1,3 @@
--- $Id: re.lua $
 
 -- imported functions and modules
 local tonumber, type, print, error = tonumber, type, print, error

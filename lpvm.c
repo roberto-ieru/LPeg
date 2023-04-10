@@ -1,7 +1,3 @@
-/*
-** $Id: lpvm.c $
-** Copyright 2007, Lua.org & PUC-Rio  (see 'lpeg.html' for license)
-*/
 
 #include <limits.h>
 #include <string.h>
