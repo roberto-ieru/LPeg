@@ -1,7 +1,5 @@
 #!/usr/bin/env lua
 
--- $Id: test.lua $
-
 -- require"strict"    -- just to be pedantic
 
 local m = require"lpeg"
@@ -1393,6 +1391,12 @@ e = compile([[
 
 e = compile("{[0-9]+'.'?[0-9]*} -> sin", math)
 assert(e:match("2.34") == math.sin(2.34))
+
+e = compile("'pi' -> math", _G)
+assert(e:match("pi") == math.pi)
+
+e = compile("[ ]* 'version' -> _VERSION", _G)
+assert(e:match("  version") == _VERSION)
 
 
 function eq (_, _, a, b) return a == b end
