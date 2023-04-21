@@ -8,14 +8,14 @@
 /* Virtual Machine's instructions */
 typedef enum Opcode {
   IAny, /* if no char, fail */
-  IChar,  /* if char != aux, fail */
+  IChar,  /* if char != aux1, fail */
   ISet,  /* if char not in buff, fail */
   ITestAny,  /* in no char, jump to 'offset' */
-  ITestChar,  /* if char != aux, jump to 'offset' */
+  ITestChar,  /* if char != aux1, jump to 'offset' */
   ITestSet,  /* if char not in buff, jump to 'offset' */
   ISpan,  /* read a span of chars in buff */
   IUTFR,  /* if codepoint not in range [offset, utf_to], fail */
-  IBehind,  /* walk back 'aux' characters (fail if not possible) */
+  IBehind,  /* walk back 'aux1' characters (fail if not possible) */
   IRet,  /* return from a rule */
   IEnd,  /* end of pattern */
   IChoice,  /* stack a choice; next fail will jump to 'offset' */
@@ -40,8 +40,10 @@ typedef enum Opcode {
 typedef union Instruction {
   struct Inst {
     byte code;
-    byte aux;
-    short key;
+    byte aux1;
+    union {
+      short key;
+    } aux2;
   } i;
   int offset;
   byte buff[1];
@@ -49,7 +51,7 @@ typedef union Instruction {
 
 
 /* extract 24-bit value from an instruction */
-#define utf_to(inst)	(((inst)->i.key << 8) | (inst)->i.aux)
+#define utf_to(inst)	(((inst)->i.aux2.key << 8) | (inst)->i.aux1)
 
 
 void printpatt (Instruction *p, int n);

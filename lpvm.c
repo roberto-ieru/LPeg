@@ -20,7 +20,7 @@
 
 #define getoffset(p)	(((p) + 1)->offset)
 
-static const Instruction giveup = {{IGiveup, 0, 0}};
+static const Instruction giveup = {{IGiveup, 0, {0}}};
 
 
 /*
@@ -249,12 +249,12 @@ const char *match (lua_State *L, const char *o, const char *s, const char *e,
         continue;
       }
       case IChar: {
-        if ((byte)*s == p->i.aux && s < e) { p++; s++; }
+        if ((byte)*s == p->i.aux1 && s < e) { p++; s++; }
         else goto fail;
         continue;
       }
       case ITestChar: {
-        if ((byte)*s == p->i.aux && s < e) p += 2;
+        if ((byte)*s == p->i.aux1 && s < e) p += 2;
         else p += getoffset(p);
         continue;
       }
@@ -273,7 +273,7 @@ const char *match (lua_State *L, const char *o, const char *s, const char *e,
         continue;
       }
       case IBehind: {
-        int n = p->i.aux;
+        int n = p->i.aux1;
         if (n > s - o) goto fail;
         s -= n; p++;
         continue;
@@ -404,7 +404,7 @@ const char *match (lua_State *L, const char *o, const char *s, const char *e,
         capture[captop].s = s - getoff(p);
         /* goto pushcapture; */
       pushcapture: {
-        capture[captop].idx = p->i.key;
+        capture[captop].idx = p->i.aux2.key;
         capture[captop].kind = getkind(p);
         captop++;
         capture = growcap(L, capture, &capsize, captop, 0, ptop);

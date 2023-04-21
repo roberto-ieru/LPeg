@@ -62,11 +62,11 @@ void printinst (const Instruction *op, const Instruction *p) {
   printf("%02ld: %s ", (long)(p - op), names[p->i.code]);
   switch ((Opcode)p->i.code) {
     case IChar: {
-      printf("'%c' (%02x)", p->i.aux, p->i.aux);
+      printf("'%c' (%02x)", p->i.aux1, p->i.aux1);
       break;
     }
     case ITestChar: {
-      printf("'%c' (%02x)", p->i.aux, p->i.aux); printjmp(op, p);
+      printf("'%c' (%02x)", p->i.aux1, p->i.aux1); printjmp(op, p);
       break;
     }
     case IUTFR: {
@@ -75,11 +75,11 @@ void printinst (const Instruction *op, const Instruction *p) {
     }
     case IFullCapture: {
       printf("%s (size = %d)  (idx = %d)",
-             capkind(getkind(p)), getoff(p), p->i.key);
+             capkind(getkind(p)), getoff(p), p->i.aux2.key);
       break;
     }
     case IOpenCapture: {
-      printf("%s (idx = %d)", capkind(getkind(p)), p->i.key);
+      printf("%s (idx = %d)", capkind(getkind(p)), p->i.aux2.key);
       break;
     }
     case ISet: {
@@ -99,7 +99,7 @@ void printinst (const Instruction *op, const Instruction *p) {
       break;
     }
     case IBehind: {
-      printf("%d", p->i.aux);
+      printf("%d", p->i.aux1);
       break;
     }
     case IJmp: case ICall: case ICommit: case IChoice:

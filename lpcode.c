@@ -499,7 +499,7 @@ static int nextinstruction (CompileState *compst) {
 static int addinstruction (CompileState *compst, Opcode op, int aux) {
   int i = nextinstruction(compst);
   getinstr(compst, i).i.code = op;
-  getinstr(compst, i).i.aux = aux;
+  getinstr(compst, i).i.aux1 = aux;
   return i;
 }
 
@@ -528,8 +528,8 @@ static void codeutfr (CompileState *compst, TTree *tree) {
   int to = sib1(tree)->u.n;
   assert(sib1(tree)->tag == TXInfo);
   getinstr(compst, i + 1).offset = tree->u.n;
-  getinstr(compst, i).i.aux = to & 0xff;
-  getinstr(compst, i).i.key = to >> 8;
+  getinstr(compst, i).i.aux1 = to & 0xff;
+  getinstr(compst, i).i.aux2.key = to >> 8;
 }
 
 
@@ -542,7 +542,7 @@ static void codeutfr (CompileState *compst, TTree *tree) {
 static int addinstcap (CompileState *compst, Opcode op, int cap, int key,
                        int aux) {
   int i = addinstruction(compst, op, joinkindoff(cap, aux));
-  getinstr(compst, i).i.key = key;
+  getinstr(compst, i).i.aux2.key = key;
   return i;
 }
 
@@ -575,7 +575,7 @@ static void jumptohere (CompileState *compst, int instruction) {
 */
 static void codechar (CompileState *compst, int c, int tt) {
   if (tt >= 0 && getinstr(compst, tt).i.code == ITestChar &&
-                 getinstr(compst, tt).i.aux == c)
+                 getinstr(compst, tt).i.aux1 == c)
     addinstruction(compst, IAny, 0);
   else
     addinstruction(compst, IChar, c);
@@ -636,7 +636,7 @@ static int codetestset (CompileState *compst, Charset *cs, int e) {
       case IAny: return addoffsetinst(compst, ITestAny);
       case IChar: {
         int i = addoffsetinst(compst, ITestChar);
-        getinstr(compst, i).i.aux = c;
+        getinstr(compst, i).i.aux1 = c;
         return i;
       }
       case ISet: {
@@ -862,7 +862,7 @@ static void correctcalls (CompileState *compst, int *positions,
   Instruction *code = compst->p->code;
   for (i = from; i < to; i += sizei(&code[i])) {
     if (code[i].i.code == IOpenCall) {
-      int n = code[i].i.key;  /* rule number */
+      int n = code[i].i.aux2.key;  /* rule number */
       int rule = positions[n];  /* rule position */
       assert(rule == from || code[rule - 1].i.code == IRet);
       if (code[finaltarget(code, i + 2)].i.code == IRet)  /* call; ret ? */
@@ -904,7 +904,7 @@ static void codegrammar (CompileState *compst, TTree *grammar) {
 static void codecall (CompileState *compst, TTree *call) {
   int c = addoffsetinst(compst, IOpenCall);  /* to be corrected later */
   assert(sib1(sib2(call))->tag == TXInfo);
-  getinstr(compst, c).i.key = sib1(sib2(call))->u.n;  /* rule number */
+  getinstr(compst, c).i.aux2.key = sib1(sib2(call))->u.n;  /* rule number */
 }
 
 

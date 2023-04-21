@@ -111,8 +111,8 @@ typedef struct Charset {
 ** in capture instructions, 'kind' of capture and its offset are
 ** packed in field 'aux', 4 bits for each
 */
-#define getkind(op)		((op)->i.aux & 0xF)
-#define getoff(op)		(((op)->i.aux >> 4) & 0xF)
+#define getkind(op)		((op)->i.aux1 & 0xF)
+#define getoff(op)		(((op)->i.aux1 >> 4) & 0xF)
 #define joinkindoff(k,o)	((k) | ((o) << 4))
 
 #define MAXOFF		0xF
