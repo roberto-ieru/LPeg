@@ -23,6 +23,16 @@
 static const Instruction giveup = {{IGiveup, 0, {0}}};
 
 
+int charinset (const Instruction *i, const byte *buff, unsigned int c) {
+  c -= (unsigned int)i->i.aux2.set.offset;
+  if (c >= ((unsigned int)i->i.aux2.set.size  /* size in instructions... */
+           * (unsigned int)sizeof(Instruction)  /* in bytes... */
+           * 8u))  /* in bits */
+    return i->i.aux1;  /* out of range */
+  return (testchar(buff, c) != i->i.aux1);
+}
+
+
 /*
 ** Decode one UTF-8 sequence, returning NULL if byte sequence is invalid.
 */
@@ -259,16 +269,16 @@ const char *match (lua_State *L, const char *o, const char *s, const char *e,
         continue;
       }
       case ISet: {
-        int c = (byte)*s;
-        if (testchar((p+1)->buff, c) && s < e)
-          { p += CHARSETINSTSIZE; s++; }
+        unsigned int c = (byte)*s;
+        if (charinset(p, (p+1)->buff, c) && s < e)
+          { p += 1 + p->i.aux2.set.size; s++; }
         else goto fail;
         continue;
       }
       case ITestSet: {
-        int c = (byte)*s;
-        if (testchar((p + 2)->buff, c) && s < e)
-          p += 1 + CHARSETINSTSIZE;
+        unsigned int c = (byte)*s;
+        if (charinset(p, (p + 2)->buff, c) && s < e)
+          p += 2 + p->i.aux2.set.size;
         else p += getoffset(p);
         continue;
       }
@@ -280,10 +290,10 @@ const char *match (lua_State *L, const char *o, const char *s, const char *e,
       }
       case ISpan: {
         for (; s < e; s++) {
-          int c = (byte)*s;
-          if (!testchar((p+1)->buff, c)) break;
+          unsigned int c = (byte)*s;
+          if (!charinset(p, (p+1)->buff, c)) break;
         }
-        p += CHARSETINSTSIZE;
+        p += 1 + p->i.aux2.set.size;
         continue;
       }
       case IJmp: {

@@ -22,6 +22,7 @@ static const Charset fullset_ =
 
 static const Charset *fullset = &fullset_;
 
+
 /*
 ** {======================================================
 ** Analysis and some optimizations
@@ -441,8 +442,8 @@ static int needfollow (TTree *tree) {
 */
 int sizei (const Instruction *i) {
   switch((Opcode)i->i.code) {
-    case ISet: case ISpan: return CHARSETINSTSIZE;
-    case ITestSet: return CHARSETINSTSIZE + 1;
+    case ISet: case ISpan: return 1 + i->i.aux2.set.size;
+    case ITestSet: return 2 + i->i.aux2.set.size;
     case ITestChar: case ITestAny: case IChoice: case IJmp: case ICall:
     case IOpenCall: case ICommit: case IPartialCommit: case IBackCommit:
     case IUTFR:
@@ -585,10 +586,14 @@ static void codechar (CompileState *compst, int c, int tt) {
 /*
 ** Add a charset posfix to an instruction
 */
-static void addcharset (CompileState *compst, const byte *cs) {
+static void addcharset (CompileState *compst, int inst, const byte *cs) {
   int p = gethere(compst);
   int i;
-  for (i = 0; i < (int)CHARSETINSTSIZE - 1; i++)
+  /* for now, all sets use all bits */
+  getinstr(compst, inst).i.aux2.set.offset = 0;
+  getinstr(compst, inst).i.aux2.set.size = instsize(CHARSETSIZE);
+  getinstr(compst, inst).i.aux1 = 0;
+  for (i = 0; i < (int)instsize(CHARSETSIZE); i++)
     nextinstruction(compst);  /* space for buffer */
   /* fill buffer with charset */
   loopset(j, getinstr(compst, p).buff[j] = cs[j]);
@@ -610,8 +615,8 @@ static void codecharset (CompileState *compst, const byte *cs, int tt) {
           cs_equal(cs, getinstr(compst, tt + 2).buff))
         addinstruction(compst, IAny, 0);
       else {
-        addinstruction(compst, ISet, 0);
-        addcharset(compst, cs);
+        int i = addinstruction(compst, ISet, 0);
+        addcharset(compst, i, cs);
       }
       break;
     }
@@ -641,7 +646,7 @@ static int codetestset (CompileState *compst, Charset *cs, int e) {
       }
       case ISet: {
         int i = addoffsetinst(compst, ITestSet);
-        addcharset(compst, cs->cs);
+        addcharset(compst, i, cs->cs);
         return i;
       }
       default: assert(0); return 0;
@@ -793,8 +798,8 @@ static void coderep (CompileState *compst, TTree *tree, int opt,
                      const Charset *fl) {
   Charset st;
   if (tocharset(tree, &st)) {
-    addinstruction(compst, ISpan, 0);
-    addcharset(compst, st.cs);
+    int i = addinstruction(compst, ISpan, 0);
+    addcharset(compst, i, st.cs);
   }
   else {
     int e1 = getfirst(tree, fullset, &st);

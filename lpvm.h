@@ -5,15 +5,22 @@
 #include "lpcap.h"
 
 
+/*
+** About Character sets in instructions: a set is a bit map with an
+** initial offset, in bits, and a size, in number of instructions. If
+** aux1 is one, set is inverted (bit == 1 means char is not in set).
+*/
+
+
 /* Virtual Machine's instructions */
 typedef enum Opcode {
   IAny, /* if no char, fail */
   IChar,  /* if char != aux1, fail */
-  ISet,  /* if char not in buff, fail */
+  ISet,  /* if char not in set, fail */
   ITestAny,  /* in no char, jump to 'offset' */
   ITestChar,  /* if char != aux1, jump to 'offset' */
-  ITestSet,  /* if char not in buff, jump to 'offset' */
-  ISpan,  /* read a span of chars in buff */
+  ITestSet,  /* if char not in set, jump to 'offset' */
+  ISpan,  /* read a span of chars in set */
   IUTFR,  /* if codepoint not in range [offset, utf_to], fail */
   IBehind,  /* walk back 'aux1' characters (fail if not possible) */
   IRet,  /* return from a rule */
@@ -43,6 +50,10 @@ typedef union Instruction {
     byte aux1;
     union {
       short key;
+      struct {
+        byte offset;
+        byte size;
+      } set;
     } aux2;
   } i;
   int offset;
@@ -54,6 +65,7 @@ typedef union Instruction {
 #define utf_to(inst)	(((inst)->i.aux2.key << 8) | (inst)->i.aux1)
 
 
+int charinset (const Instruction *i, const byte *buff, unsigned int c);
 void printpatt (Instruction *p, int n);
 const char *match (lua_State *L, const char *o, const char *s, const char *e,
                    Instruction *op, Capture *capture, int ptop);

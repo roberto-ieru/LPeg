@@ -33,6 +33,18 @@ void printcharset (const byte *st) {
 }
 
 
+static void printIcharset (const Instruction *inst, const byte *buff) {
+  byte cs[CHARSETSIZE];
+  int i;
+  loopset(j, cs[j] = 0);
+  for (i = 0; i < CHARSETSIZE << 3; i++) {
+    if (charinset(inst, buff, i))
+      setchar(cs, i);
+  }
+  printcharset(cs);
+}
+
+
 static const char *capkind (int kind) {
   const char *const modes[] = {
     "close", "position", "constant", "backref",
@@ -83,15 +95,15 @@ void printinst (const Instruction *op, const Instruction *p) {
       break;
     }
     case ISet: {
-      printcharset((p+1)->buff);
+      printIcharset(p, (p+1)->buff);
       break;
     }
     case ITestSet: {
-      printcharset((p+2)->buff); printjmp(op, p);
+      printIcharset(p, (p+2)->buff); printjmp(op, p);
       break;
     }
     case ISpan: {
-      printcharset((p+1)->buff);
+      printIcharset(p, (p+1)->buff);
       break;
     }
     case IOpenCall: {

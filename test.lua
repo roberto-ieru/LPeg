@@ -117,6 +117,8 @@ eqcharset(m.S"\1\0\2", m.R"\0\2")
 eqcharset(m.S"\1\0\2", m.R"\1\2" + "\0")
 eqcharset(m.S"\1\0\2" - "\0", m.R"\1\2")
 
+eqcharset(m.S("\0\255"), m.P"\0" + "\255")   -- charset extremes
+
 local word = alpha^1 * (1 - alpha)^0
 
 assert((word^0 * -1):match"alo alo")

@@ -127,19 +127,19 @@ typedef struct Charset {
 #define MAXPATTSIZE	(SHRT_MAX - 10)
 
 
-/* size (in elements) for an instruction plus extra l bytes */
-#define instsize(l)  (((l) + sizeof(Instruction) - 1)/sizeof(Instruction) + 1)
+/* size (in instructions) for l bytes (l > 0) */
+#define instsize(l)  (((l) - 1)/sizeof(Instruction) + 1)
 
 
 /* size (in elements) for a ISet instruction */
-#define CHARSETINSTSIZE		instsize(CHARSETSIZE)
+#define CHARSETINSTSIZE		(1 + instsize(CHARSETSIZE))
 
 /* size (in elements) for a IFunc instruction */
 #define funcinstsize(p)		((p)->i.aux + 2)
 
 
 
-#define testchar(st,c)	(((int)(st)[((c) >> 3)] & (1 << ((c) & 7))))
+#define testchar(st,c)	((((unsigned int)(st)[((c) >> 3)]) >> ((c) & 7)) & 1)
 
 
 #endif
