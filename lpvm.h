@@ -7,8 +7,8 @@
 
 /*
 ** About Character sets in instructions: a set is a bit map with an
-** initial offset, in bits, and a size, in number of instructions. If
-** aux1 is one, set is inverted (bit == 1 means char is not in set).
+** initial offset, in bits, and a size, in number of instructions.
+** aux1 has the default value for the bits outsize that range.
 */
 
 

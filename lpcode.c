@@ -29,53 +29,66 @@ static const Charset *fullset = &fullset_;
 ** =======================================================
 */
 
+
+/*
+** Add to 'c' the index of the (only) bit set in byte 'b'
+*/
+static int onlybit (int c, int b) {
+  if ((b & 0xF0) != 0) { c += 4; b >>= 4; }
+  if ((b & 0x0C) != 0) { c += 2; b >>= 2; }
+  if ((b & 0x02) != 0) { c += 1; }
+  return c;
+}
+
+
+/*
+** Extra information for the result of 'charsettype'.
+*/
+typedef struct {
+  /* unique character for result IChar, offset (in bytes) for result ISet */
+  int aux1;
+  int size;  /* size (in instructions) for result ISet */
+  int deflt;   /* default value for bits outside that set */
+} charsetinfo;
+
 /*
 ** Check whether a charset is empty (returns IFail), singleton (IChar),
-** full (IAny), or none of those (ISet). When singleton, '*c' returns
-** which character it is. (When generic set, the set was the input,
-** so there is no need to return it.)
+** full (IAny), or none of those (ISet). When singleton, 'info.aux1'
+** returns which character it is. When generic set, 'info' returns
+** information about its range.
 */
-static Opcode charsettype (const byte *cs, int *c) {
-  int count = 0;  /* number of characters in the set */
-  int i;
-  int candidate = -1;  /* candidate position for the singleton char */
-  for (i = 0; i < CHARSETSIZE; i++) {  /* for each byte */
-    int b = cs[i];
-    if (b == 0) {  /* is byte empty? */
-      if (count > 1)  /* was set neither empty nor singleton? */
-        return ISet;  /* neither full nor empty nor singleton */
-      /* else set is still empty or singleton */
-    }
-    else if (b == 0xFF) {  /* is byte full? */
-      if (count < (i * BITSPERCHAR))  /* was set not full? */
-        return ISet;  /* neither full nor empty nor singleton */
-      else count += BITSPERCHAR;  /* set is still full */
-    }
-    else if ((b & (b - 1)) == 0) {  /* has byte only one bit? */
-      if (count > 0)  /* was set not empty? */
-        return ISet;  /* neither full nor empty nor singleton */
-      else {  /* set has only one char till now; track it */
-        count++;
-        candidate = i;
-      }
-    }
-    else return ISet;  /* byte is neither empty, full, nor singleton */
-  }
-  switch (count) {
-    case 0: return IFail;  /* empty set */
-    case 1: {  /* singleton; find character bit inside byte */
-      int b = cs[candidate];
-      *c = candidate * BITSPERCHAR;
-      if ((b & 0xF0) != 0) { *c += 4; b >>= 4; }
-      if ((b & 0x0C) != 0) { *c += 2; b >>= 2; }
-      if ((b & 0x02) != 0) { *c += 1; }
-      return IChar;
-    }
-    default: {
-       assert(count == CHARSETSIZE * BITSPERCHAR);  /* full set */
-       return IAny;
+static Opcode charsettype (const byte *cs, charsetinfo *info) {
+  int low0, low1, high0, high1;
+  for (low1 = 0; low1 < CHARSETSIZE && cs[low1] == 0; low1++)
+    /* find lowest byte with a 1-bit */;
+  if (low1 == CHARSETSIZE)
+    return IFail;  /* no characters in set */
+  for (high1 = CHARSETSIZE - 1; cs[high1] == 0; high1--)
+    /* find highest byte with a 1-bit; low1 is a sentinel */;
+  if (low1 == high1) {  /* only one byte with 1-bits? */
+    int b = cs[low1];
+    if ((b & (b - 1)) == 0) {  /* does byte has only one 1-bit? */
+      info->aux1 = onlybit(low1 * BITSPERCHAR, b);  /* get that bit */
+      return IChar;  /* single character */
     }
   }
+  for (low0 = 0; low0 < CHARSETSIZE && cs[low0] == 0xFF; low0++)
+    /* find lowest byte with a 0-bit */;
+  if (low0 == CHARSETSIZE)
+    return IAny;  /* set has all bits set */
+  for (high0 = CHARSETSIZE - 1; cs[high0] == 0xFF; high0--)
+    /* find highest byte with a 0-bit; low0 is a sentinel */;
+  if (high1 - low1 <= high0 - low0) {  /* range of 1s smaller than of 0s? */
+    info->aux1 = low1;
+    info->size = instsize(high1 - low1 + 1);
+    info->deflt = 0;  /* all discharged bits were 0 */
+  }
+  else {
+    info->aux1 = low0;
+    info->size = instsize(high0 - low0 + 1);
+    info->deflt = 1;  /* all discharged bits were 1 */
+  }
+  return ISet;
 }
 
 
@@ -584,19 +597,23 @@ static void codechar (CompileState *compst, int c, int tt) {
 
 
 /*
-** Add a charset posfix to an instruction
+** Add a charset posfix to an instruction.
 */
-static void addcharset (CompileState *compst, int inst, const byte *cs) {
+static void addcharset (CompileState *compst, int inst, const byte *cs,
+                                              const charsetinfo *info) {
   int p = gethere(compst);
+  Instruction *I = &getinstr(compst, inst);
+  byte *charset;
   int i;
-  /* for now, all sets use all bits */
-  getinstr(compst, inst).i.aux2.set.offset = 0;
-  getinstr(compst, inst).i.aux2.set.size = instsize(CHARSETSIZE);
-  getinstr(compst, inst).i.aux1 = 0;
-  for (i = 0; i < (int)instsize(CHARSETSIZE); i++)
-    nextinstruction(compst);  /* space for buffer */
+  I->i.aux2.set.offset = info->aux1 * 8;  /* offset in bits */
+  I->i.aux2.set.size = info->size;  /* size in instructions */
+  I->i.aux1 = info->deflt;
+  for (i = 0; i < info->size; i++)
+    nextinstruction(compst);  /* space for charset */
+  charset = getinstr(compst, p).buff;  /* previous loop may reallocate things */
   /* fill buffer with charset */
-  loopset(j, getinstr(compst, p).buff[j] = cs[j]);
+  for (i = 0; i < info->size * (int)sizeof(Instruction); i++)
+    charset[i] = cs[i + info->aux1];
 }
 
 
@@ -606,21 +623,24 @@ static void addcharset (CompileState *compst, int inst, const byte *cs) {
 ** when instruction is dominated by an equivalent test.
 */
 static void codecharset (CompileState *compst, const byte *cs, int tt) {
-  int c = 0;  /* (=) to avoid warnings */
-  Opcode op = charsettype(cs, &c);
+  charsetinfo info;
+  Opcode op = charsettype(cs, &info);
   switch (op) {
-    case IChar: codechar(compst, c, tt); break;
+    case IChar: codechar(compst, info.aux1, tt); break;
     case ISet: {  /* non-trivial set? */
       if (tt >= 0 && getinstr(compst, tt).i.code == ITestSet &&
           cs_equal(cs, getinstr(compst, tt + 2).buff))
         addinstruction(compst, IAny, 0);
       else {
         int i = addinstruction(compst, ISet, 0);
-        addcharset(compst, i, cs);
+        addcharset(compst, i, cs, &info);
       }
       break;
     }
-    default: addinstruction(compst, op, c); break;
+    default:
+      assert(op == IFail || op == IAny);
+      addinstruction(compst, op, 0);
+      break;
   }
 }
 
@@ -634,22 +654,22 @@ static void codecharset (CompileState *compst, const byte *cs, int tt) {
 static int codetestset (CompileState *compst, Charset *cs, int e) {
   if (e) return NOINST;  /* no test */
   else {
-    int c = 0;
-    Opcode op = charsettype(cs->cs, &c);
+    charsetinfo info;
+    Opcode op = charsettype(cs->cs, &info);
     switch (op) {
       case IFail: return addoffsetinst(compst, IJmp);  /* always jump */
       case IAny: return addoffsetinst(compst, ITestAny);
       case IChar: {
         int i = addoffsetinst(compst, ITestChar);
-        getinstr(compst, i).i.aux1 = c;
+        getinstr(compst, i).i.aux1 = info.aux1;
         return i;
       }
-      case ISet: {
+      default: {  /* regular set */
         int i = addoffsetinst(compst, ITestSet);
-        addcharset(compst, i, cs->cs);
+        addcharset(compst, i, cs->cs, &info);
+        assert(op == ISet);
         return i;
       }
-      default: assert(0); return 0;
     }
   }
 }
@@ -785,8 +805,51 @@ static void coderuntime (CompileState *compst, TTree *tree, int tt) {
 
 
 /*
+** Create a jump to 'test' and fix 'test' to jump to next instruction
+*/
+static void closeloop (CompileState *compst, int test) {
+  int jmp = addoffsetinst(compst, IJmp);
+  jumptohere(compst, test);
+  jumptothere(compst, jmp, test);
+}
+
+
+/*
+** Repetition of charsets:
+** For an empty set, repetition of fail is a no-op;
+** For any or char, code a tight loop;
+** For generic charset, use a span instruction.
+*/
+static void coderepcharset (CompileState *compst, Charset *st) {
+  charsetinfo info;
+  Opcode op = charsettype(st->cs, &info);
+  switch (op) {
+    case IFail: break;  /* fail* is a no-op */
+    case IAny: {  /* L1: testany -> L2; any; jmp L1; L2: */
+      int test = addoffsetinst(compst, ITestAny);
+      addinstruction(compst, IAny, 0);
+      closeloop(compst, test);
+      break;
+    }
+    case IChar: {  /* L1: testchar c -> L2; any; jmp L1; L2: */
+      int test = addoffsetinst(compst, ITestChar);
+      getinstr(compst, test).i.aux1 = info.aux1;
+      addinstruction(compst, IAny, 0);
+      closeloop(compst, test);
+      break;
+    }
+    default: {  /* regular set */
+      int i = addinstruction(compst, ISpan, 0);
+      addcharset(compst, i, st->cs, &info);
+      assert(op == ISet);
+    }
+  }
+}
+
+
+/*
 ** Repetion; optimizations:
-** When pattern is a charset, can use special instruction ISpan.
+** When pattern is a charset, use special code.
 ** When pattern is head fail, or if it starts with characters that
 ** are disjoint from what follows the repetions, a simple test
 ** is enough (a fail inside the repetition would backtrack to fail
@@ -797,20 +860,15 @@ static void coderuntime (CompileState *compst, TTree *tree, int tt) {
 static void coderep (CompileState *compst, TTree *tree, int opt,
                      const Charset *fl) {
   Charset st;
-  if (tocharset(tree, &st)) {
-    int i = addinstruction(compst, ISpan, 0);
-    addcharset(compst, i, st.cs);
-  }
+  if (tocharset(tree, &st))
+    coderepcharset(compst, &st);
   else {
     int e1 = getfirst(tree, fullset, &st);
     if (headfail(tree) || (!e1 && cs_disjoint(&st, fl))) {
       /* L1: test (fail(p1)) -> L2; <p>; jmp L1; L2: */
-      int jmp;
       int test = codetestset(compst, &st, 0);
       codegen(compst, tree, 0, test, fullset);
-      jmp = addoffsetinst(compst, IJmp);
-      jumptohere(compst, test);
-      jumptothere(compst, jmp, test);
+      closeloop(compst, test);
     }
     else {
       /* test(fail(p1)) -> L2; choice L2; L1: <p>; partialcommit L1; L2: */

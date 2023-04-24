@@ -24,12 +24,12 @@ static const Instruction giveup = {{IGiveup, 0, {0}}};
 
 
 int charinset (const Instruction *i, const byte *buff, unsigned int c) {
-  c -= (unsigned int)i->i.aux2.set.offset;
+  c -= i->i.aux2.set.offset;
   if (c >= ((unsigned int)i->i.aux2.set.size  /* size in instructions... */
            * (unsigned int)sizeof(Instruction)  /* in bytes... */
            * 8u))  /* in bits */
-    return i->i.aux1;  /* out of range */
-  return (testchar(buff, c) != i->i.aux1);
+    return i->i.aux1;  /* out of range; return default value */
+  return testchar(buff, c);
 }
 
 
