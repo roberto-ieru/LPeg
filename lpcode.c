@@ -496,11 +496,21 @@ void realloccode (lua_State *L, Pattern *p, int nsize) {
 }
 
 
-static int nextinstruction (CompileState *compst) {
+/*
+** Add space for 'n' more instructions and return the index of
+** the first one.
+*/
+static int nextinstruction (CompileState *compst, int n) {
   int size = compst->p->codesize;
-  if (compst->ncode >= size)
-    realloccode(compst->L, compst->p, size * 2);
-  return compst->ncode++;
+  int ncode = compst->ncode;
+  if (ncode >= size - n) {
+    unsigned int nsize = size + (size >> 1) + n;
+    if (nsize > INT_MAX)
+      luaL_error(compst->L, "code too large");
+    realloccode(compst->L, compst->p, nsize);
+  }
+  compst->ncode = ncode + n;
+  return ncode;
 }
 
 
@@ -508,7 +518,7 @@ static int nextinstruction (CompileState *compst) {
 
 
 static int addinstruction (CompileState *compst, Opcode op, int aux) {
-  int i = nextinstruction(compst);
+  int i = nextinstruction(compst, 1);
   getinstr(compst, i).i.code = op;
   getinstr(compst, i).i.aux1 = aux;
   return i;
@@ -598,7 +608,7 @@ static void codechar (CompileState *compst, int c, int tt) {
 */
 static void addcharset (CompileState *compst, int inst, const byte *cs,
                                               const charsetinfo *info) {
-  int p = gethere(compst);
+  int p;
   Instruction *I = &getinstr(compst, inst);
   byte *charset;
   int isize = instsize(info->size);  /* size in instructions */
@@ -606,8 +616,7 @@ static void addcharset (CompileState *compst, int inst, const byte *cs,
   I->i.aux2.set.offset = info->aux1 * 8;  /* offset in bits */
   I->i.aux2.set.size = isize;
   I->i.aux1 = info->deflt;
-  for (i = 0; i < isize; i++)
-    nextinstruction(compst);  /* space for charset */
+  p = nextinstruction(compst, isize);  /* space for charset */
   charset = getinstr(compst, p).buff;  /* previous loop may reallocate things */
   for (i = 0; i < info->size; i++)
     charset[i] = cs[i + info->aux1];  /* fill buffer with charset */
@@ -1105,7 +1114,7 @@ static void peephole (CompileState *compst) {
 Instruction *compile (lua_State *L, Pattern *p) {
   CompileState compst;
   compst.p = p;  compst.ncode = 0;  compst.L = L;
-  realloccode(L, p, 2);  /* minimum initial size */
+  realloccode(L, p, 4);  /* minimum initial size */
   codegen(&compst, p->tree, 0, NOINST, fullset);
   addinstruction(&compst, IEnd, 0);
   realloccode(L, p, compst.ncode);  /* set final size */
