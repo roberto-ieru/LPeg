@@ -128,7 +128,8 @@ typedef struct Charset {
 
 
 /* size (in instructions) for l bytes (l > 0) */
-#define instsize(l)  (((l) - 1)/sizeof(Instruction) + 1)
+#define instsize(l) ((int)(((l) + (unsigned int)sizeof(Instruction) - 1u) \
+			/ (unsigned int)sizeof(Instruction)))
 
 
 /* size (in elements) for a ISet instruction */

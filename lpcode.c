@@ -42,13 +42,15 @@ static int onlybit (int c, int b) {
 
 
 /*
-** Extra information for the result of 'charsettype'.
+** Extra information for the result of 'charsettype'.  When result is
+** IChar, 'aux1' is the character.  When result is ISet, 'aux1' is the
+** offset (in bytes), 'size' is the size (in bytes), and
+** 'delt' is the default value for bytes outside the set.
 */
 typedef struct {
-  /* unique character for result IChar, offset (in bytes) for result ISet */
   int aux1;
-  int size;  /* size (in instructions) for result ISet */
-  int deflt;   /* default value for bits outside that set */
+  int size;
+  int deflt;
 } charsetinfo;
 
 /*
@@ -80,13 +82,13 @@ static Opcode charsettype (const byte *cs, charsetinfo *info) {
     /* find highest byte with a 0-bit; low0 is a sentinel */;
   if (high1 - low1 <= high0 - low0) {  /* range of 1s smaller than of 0s? */
     info->aux1 = low1;
-    info->size = instsize(high1 - low1 + 1);
+    info->size = high1 - low1 + 1;
     info->deflt = 0;  /* all discharged bits were 0 */
   }
   else {
     info->aux1 = low0;
-    info->size = instsize(high0 - low0 + 1);
-    info->deflt = 1;  /* all discharged bits were 1 */
+    info->size = high0 - low0 + 1;
+    info->deflt = 0xFF;  /* all discharged bits were 1 */
   }
   return ISet;
 }
@@ -97,11 +99,6 @@ static Opcode charsettype (const byte *cs, charsetinfo *info) {
 */
 static void cs_complement (Charset *cs) {
   loopset(i, cs->cs[i] = ~cs->cs[i]);
-}
-
-static int cs_equal (const byte *cs1, const byte *cs2) {
-  loopset(i, if (cs1[i] != cs2[i]) return 0);
-  return 1;
 }
 
 static int cs_disjoint (const Charset *cs1, const Charset *cs2) {
@@ -604,16 +601,43 @@ static void addcharset (CompileState *compst, int inst, const byte *cs,
   int p = gethere(compst);
   Instruction *I = &getinstr(compst, inst);
   byte *charset;
+  int isize = instsize(info->size);  /* size in instructions */
   int i;
   I->i.aux2.set.offset = info->aux1 * 8;  /* offset in bits */
-  I->i.aux2.set.size = info->size;  /* size in instructions */
+  I->i.aux2.set.size = isize;
   I->i.aux1 = info->deflt;
-  for (i = 0; i < info->size; i++)
+  for (i = 0; i < isize; i++)
     nextinstruction(compst);  /* space for charset */
   charset = getinstr(compst, p).buff;  /* previous loop may reallocate things */
-  /* fill buffer with charset */
-  for (i = 0; i < info->size * (int)sizeof(Instruction); i++)
-    charset[i] = cs[i + info->aux1];
+  for (i = 0; i < info->size; i++)
+    charset[i] = cs[i + info->aux1];  /* fill buffer with charset */
+  for (; i < isize * (int)sizeof(Instruction); i++)
+    charset[i] = info->deflt;  /* complete the buffer */
+}
+
+
+/*
+** Check whether compact charset cs is dominated by instruction 'p'
+*/
+static int cs_equal (Instruction *p, const byte *cs, charsetinfo *info) {
+  if (p->i.code != ITestSet)
+    return 0;
+  else if (p->i.aux2.set.offset != info->aux1 * 8 ||
+           p->i.aux2.set.size != instsize(info->size) ||
+           p->i.aux1 != info->deflt)
+    return 0;
+  else {
+    int i;
+    for (i = 0; i < info->size; i++) {
+      if ((p + 2)->buff[i] != cs[i + info->aux1])
+        return 0;
+    }
+    for (; i < instsize(info->size) * (int)sizeof(Instruction); i++) {
+      if ((p + 2)->buff[i] != info->deflt)
+        return 0;
+    }
+  }
+  return 1;
 }
 
 
@@ -628,8 +652,7 @@ static void codecharset (CompileState *compst, const byte *cs, int tt) {
   switch (op) {
     case IChar: codechar(compst, info.aux1, tt); break;
     case ISet: {  /* non-trivial set? */
-      if (tt >= 0 && getinstr(compst, tt).i.code == ITestSet &&
-          cs_equal(cs, getinstr(compst, tt + 2).buff))
+      if (tt >= 0 && cs_equal(&getinstr(compst, tt), cs, &info))
         addinstruction(compst, IAny, 0);
       else {
         int i = addinstruction(compst, ISet, 0);

@@ -23,7 +23,7 @@ void printcharset (const byte *st) {
   printf("[");
   for (i = 0; i <= UCHAR_MAX; i++) {
     int first = i;
-    while (testchar(st, i) && i <= UCHAR_MAX) i++;
+    while (i <= UCHAR_MAX && testchar(st, i)) i++;
     if (i - 1 == first)  /* unary range? */
       printf("(%02x)", first);
     else if (i - 1 > first)  /* non-empty range? */
@@ -36,8 +36,9 @@ void printcharset (const byte *st) {
 static void printIcharset (const Instruction *inst, const byte *buff) {
   byte cs[CHARSETSIZE];
   int i;
+  printf("(%02x-%d) ", inst->i.aux2.set.offset, inst->i.aux2.set.size);
   loopset(j, cs[j] = 0);
-  for (i = 0; i < CHARSETSIZE << 3; i++) {
+  for (i = 0; i < CHARSETSIZE * 8; i++) {
     if (charinset(inst, buff, i))
       setchar(cs, i);
   }
