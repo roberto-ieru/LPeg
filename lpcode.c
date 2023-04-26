@@ -7,6 +7,7 @@
 
 #include "lptypes.h"
 #include "lpcode.h"
+#include "lpcset.h"
 
 
 /* signals a "no-instruction */
@@ -28,70 +29,6 @@ static const Charset *fullset = &fullset_;
 ** Analysis and some optimizations
 ** =======================================================
 */
-
-
-/*
-** Add to 'c' the index of the (only) bit set in byte 'b'
-*/
-static int onlybit (int c, int b) {
-  if ((b & 0xF0) != 0) { c += 4; b >>= 4; }
-  if ((b & 0x0C) != 0) { c += 2; b >>= 2; }
-  if ((b & 0x02) != 0) { c += 1; }
-  return c;
-}
-
-
-/*
-** Extra information for the result of 'charsettype'.  When result is
-** IChar, 'aux1' is the character.  When result is ISet, 'aux1' is the
-** offset (in bytes), 'size' is the size (in bytes), and
-** 'delt' is the default value for bytes outside the set.
-*/
-typedef struct {
-  int aux1;
-  int size;
-  int deflt;
-} charsetinfo;
-
-/*
-** Check whether a charset is empty (returns IFail), singleton (IChar),
-** full (IAny), or none of those (ISet). When singleton, 'info.aux1'
-** returns which character it is. When generic set, 'info' returns
-** information about its range.
-*/
-static Opcode charsettype (const byte *cs, charsetinfo *info) {
-  int low0, low1, high0, high1;
-  for (low1 = 0; low1 < CHARSETSIZE && cs[low1] == 0; low1++)
-    /* find lowest byte with a 1-bit */;
-  if (low1 == CHARSETSIZE)
-    return IFail;  /* no characters in set */
-  for (high1 = CHARSETSIZE - 1; cs[high1] == 0; high1--)
-    /* find highest byte with a 1-bit; low1 is a sentinel */;
-  if (low1 == high1) {  /* only one byte with 1-bits? */
-    int b = cs[low1];
-    if ((b & (b - 1)) == 0) {  /* does byte has only one 1-bit? */
-      info->aux1 = onlybit(low1 * BITSPERCHAR, b);  /* get that bit */
-      return IChar;  /* single character */
-    }
-  }
-  for (low0 = 0; low0 < CHARSETSIZE && cs[low0] == 0xFF; low0++)
-    /* find lowest byte with a 0-bit */;
-  if (low0 == CHARSETSIZE)
-    return IAny;  /* set has all bits set */
-  for (high0 = CHARSETSIZE - 1; cs[high0] == 0xFF; high0--)
-    /* find highest byte with a 0-bit; low0 is a sentinel */;
-  if (high1 - low1 <= high0 - low0) {  /* range of 1s smaller than of 0s? */
-    info->aux1 = low1;
-    info->size = high1 - low1 + 1;
-    info->deflt = 0;  /* all discharged bits were 0 */
-  }
-  else {
-    info->aux1 = low0;
-    info->size = high0 - low0 + 1;
-    info->deflt = 0xFF;  /* all discharged bits were 1 */
-  }
-  return ISet;
-}
 
 
 /*
@@ -617,11 +554,9 @@ static void addcharset (CompileState *compst, int inst, const byte *cs,
   I->i.aux2.set.size = isize;
   I->i.aux1 = info->deflt;
   p = nextinstruction(compst, isize);  /* space for charset */
-  charset = getinstr(compst, p).buff;  /* previous loop may reallocate things */
-  for (i = 0; i < info->size; i++)
-    charset[i] = cs[i + info->aux1];  /* fill buffer with charset */
-  for (; i < isize * (int)sizeof(Instruction); i++)
-    charset[i] = info->deflt;  /* complete the buffer */
+  charset = getinstr(compst, p).buff;  /* charset buffer */
+  for (i = 0; i < isize * (int)sizeof(Instruction); i++)
+    charset[i] = getbytefromcharset(cs, info, i);  /* fill the buffer */
 }
 
 
@@ -637,12 +572,8 @@ static int cs_equal (Instruction *p, const byte *cs, charsetinfo *info) {
     return 0;
   else {
     int i;
-    for (i = 0; i < info->size; i++) {
-      if ((p + 2)->buff[i] != cs[i + info->aux1])
-        return 0;
-    }
-    for (; i < instsize(info->size) * (int)sizeof(Instruction); i++) {
-      if ((p + 2)->buff[i] != info->deflt)
+    for (i = 0; i < instsize(info->size) * (int)sizeof(Instruction); i++) {
+      if ((p + 2)->buff[i] != getbytefromcharset(cs, info, i))
         return 0;
     }
   }

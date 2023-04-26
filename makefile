@@ -1,7 +1,7 @@
 LIBNAME = lpeg
-LUADIR = ../lua/
+LUADIR = ./lua/
 
-# COPT = -O2 -DNDEBUG
+COPT = -O2 -DNDEBUG
 # COPT = -g
 # COPT = -DLPEG_DEBUG
 
@@ -26,7 +26,7 @@ CWARNS = -Wall -Wextra -pedantic \
 CFLAGS = $(CWARNS) $(COPT) -std=c99 -I$(LUADIR) -fPIC
 CC = gcc
 
-FILES = lpvm.o lpcap.o lptree.o lpcode.o lpprint.o
+FILES = lpvm.o lpcap.o lptree.o lpcode.o lpprint.o lpcset.o
 
 # For Linux
 linux:
@@ -53,4 +53,4 @@ lpcode.o: lpcode.c lptypes.h lpcode.h lptree.h lpvm.h lpcap.h
 lpprint.o: lpprint.c lptypes.h lpprint.h lptree.h lpvm.h lpcap.h
 lptree.o: lptree.c lptypes.h lpcap.h lpcode.h lptree.h lpvm.h lpprint.h
 lpvm.o: lpvm.c lpcap.h lptypes.h lpvm.h lpprint.h lptree.h
-
+lpcset.o: lpcset.c lpcset.h lptypes.h
