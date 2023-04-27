@@ -101,11 +101,8 @@ typedef struct Charset {
 #define fillset(s,c)	memset(s,c,CHARSETSIZE)
 #define clearset(s)	fillset(s,0)
 
-/* access to charset */
-#define treebuffer(t)      ((byte *)((t) + 1))
-
 /* number of slots needed for 'n' bytes */
-#define bytes2slots(n)  (((n) - 1) / sizeof(TTree) + 1)
+#define bytes2slots(n)  (((n) - 1u) / (unsigned int)sizeof(TTree) + 1u)
 
 /* set 'b' bit in charset 'cs' */
 #define setchar(cs,b)   ((cs)[(b) >> 3] |= (1 << ((b) & 7)))

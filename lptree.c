@@ -335,7 +335,7 @@ static Pattern *getpattern (lua_State *L, int idx) {
 
 
 static int getsize (lua_State *L, int idx) {
-  return (lua_rawlen(L, idx) - sizeof(Pattern)) / sizeof(TTree) + 1;
+  return (lua_rawlen(L, idx) - offsetof(Pattern, tree)) / sizeof(TTree);
 }
 
 
@@ -348,12 +348,12 @@ static TTree *gettree (lua_State *L, int idx, int *len) {
 
 
 /*
-** create a pattern. Set its uservalue (the 'ktable') equal to its
-** metatable. (It could be any empty sequence; the metatable is at
-** hand here, so we use it.)
+** create a pattern followed by a tree with 'len' nodes. Set its
+** uservalue (the 'ktable') equal to its metatable. (It could be any
+** empty sequence; the metatable is at hand here, so we use it.)
 */
 static TTree *newtree (lua_State *L, int len) {
-  size_t size = (len - 1) * sizeof(TTree) + sizeof(Pattern);
+  size_t size = offsetof(Pattern, tree) + len * sizeof(TTree);
   Pattern *p = (Pattern *)lua_newuserdata(L, size);
   luaL_getmetatable(L, PATTERN_T);
   lua_pushvalue(L, -1);
@@ -371,40 +371,44 @@ static TTree *newleaf (lua_State *L, int tag) {
 }
 
 
-static TTree *newccharset (lua_State *L, byte *cs, charsetinfo *info) {
-  int i;
-  TTree *tree = newtree(L, bytes2slots(info->size) + 1);
-  tree->tag = TSet;
-  tree->u.set.offset = info->offset;
-  tree->u.set.size = info->size;
-  tree->u.set.deflt = info->deflt;
-  for (i = 0; i < info->size; i++)
-    treebuffer(tree)[i] = cs[info->offset + i];
-  return tree;
-}
-
-
+/*
+** Create a tree for a charset, optimizing for special cases: empty set,
+** full set, and singleton set.
+*/
 static TTree *newcharset (lua_State *L, byte *cs) {
   charsetinfo info;
   Opcode op = charsettype(cs, &info);
   switch (op) {
-    case IFail: return newleaf(L, TFalse);
-    case IAny: return newleaf(L, TAny);
-    case IChar: {
+    case IFail: return newleaf(L, TFalse);  /* empty set */
+    case IAny: return newleaf(L, TAny);  /* full set */
+    case IChar: {  /* singleton set */
       TTree *tree =newleaf(L, TChar);
       tree->u.n = info.offset;
       return tree;
     }
-    default:
+    default: {  /* regular set */
+      int i;
+      int bsize =  /* tree size in bytes */
+                  (int)offsetof(TTree, u.set.bitmap) + info.size;
+      TTree *tree = newtree(L, bytes2slots(bsize));
       assert(op == ISet);
-      return newccharset(L, cs, &info);
+      tree->tag = TSet;
+      tree->u.set.offset = info.offset;
+      tree->u.set.size = info.size;
+      tree->u.set.deflt = info.deflt;
+      for (i = 0; i < info.size; i++) {
+        assert(&treebuffer(tree)[i] < (byte*)tree + bsize);
+        treebuffer(tree)[i] = cs[info.offset + i];
+      }
+      return tree;
+    }
   }
 }
 
 
 /*
-** add to tree a sequence where first sibling is 'sib' (with size
-** 'sibsize'); returns position for second sibling
+** Add to tree a sequence where first sibling is 'sib' (with size
+** 'sibsize'); return position for second sibling.
 */
 static TTree *seqaux (TTree *tree, TTree *sib, int sibsize) {
   tree->tag = TSeq; tree->u.ps = sibsize + 1;

@@ -56,9 +56,14 @@ typedef struct TTree {
       byte offset;  /* compact set offset (in bytes) */
       byte size;  /* compact set size (in bytes) */
       byte deflt;  /* default value */
+      byte bitmap[1];  /* bitmap (open array) */
     } set;  /* for compact sets */
   } u;
 } TTree;
+
+
+/* access to charset */
+#define treebuffer(t)      ((t)->u.set.bitmap)
 
 
 /*
