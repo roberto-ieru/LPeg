@@ -68,6 +68,8 @@ assert(m.match(#m.P(true) * "a", "a") == 2)
 assert(m.match("a" * #m.P(false), "a") == nil)
 assert(m.match("a" * #m.P(true), "a") == 2)
 
+assert(m.match(m.P(1)^0, "abcd") == 5)
+assert(m.match(m.S("")^0, "abcd") == 1)
 
 -- tests for locale
 do
@@ -1167,7 +1169,7 @@ end
 
 
 -- bug in 1.0: problems with math-times returning too many captures
-do
+if _VERSION >= "Lua 5.2" then
   local lim = 2^11 - 10
   local res = {m.match(manyCmt(lim), "a")}
   assert(#res == lim and res[1] == lim - 1 and res[lim] == 0)

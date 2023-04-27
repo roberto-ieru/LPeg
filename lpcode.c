@@ -45,31 +45,6 @@ static int cs_disjoint (const Charset *cs1, const Charset *cs2) {
 
 
 /*
-** If 'tree' is a 'char' pattern (TSet, TChar, TAny), convert it into a
-** charset and return 1; else return 0.
-*/
-int tocharset (TTree *tree, Charset *cs) {
-  switch (tree->tag) {
-    case TSet: {  /* copy set */
-      loopset(i, cs->cs[i] = treebuffer(tree)[i]);
-      return 1;
-    }
-    case TChar: {  /* only one char */
-      assert(0 <= tree->u.n && tree->u.n <= UCHAR_MAX);
-      loopset(i, cs->cs[i] = 0);  /* erase all chars */
-      setchar(cs->cs, tree->u.n);  /* add that one */
-      return 1;
-    }
-    case TAny: {
-      loopset(i, cs->cs[i] = 0xFF);  /* add all characters to the set */
-      return 1;
-    }
-    default: return 0;
-  }
-}
-
-
-/*
 ** Visit a TCall node taking care to stop recursion. If node not yet
 ** visited, return 'f(sib2(tree))', otherwise return 'def' (default
 ** value)
@@ -240,7 +215,7 @@ int fixedlen (TTree *tree) {
 static int getfirst (TTree *tree, const Charset *follow, Charset *firstset) {
  tailcall:
   switch (tree->tag) {
-    case TChar: case TSet: case TAny: {
+    case TChar: case TSet: case TAny: case TFalse: {
       tocharset(tree, firstset);
       return 0;
     }
@@ -254,10 +229,6 @@ static int getfirst (TTree *tree, const Charset *follow, Charset *firstset) {
     case TTrue: {
       loopset(i, firstset->cs[i] = follow->cs[i]);
       return 1;  /* accepts the empty string */
-    }
-    case TFalse: {
-      loopset(i, firstset->cs[i] = 0);
-      return 0;
     }
     case TChoice: {
       Charset csaux;
@@ -543,37 +514,36 @@ static void codechar (CompileState *compst, int c, int tt) {
 /*
 ** Add a charset posfix to an instruction.
 */
-static void addcharset (CompileState *compst, int inst, const byte *cs,
-                                              const charsetinfo *info) {
+static void addcharset (CompileState *compst, int inst, charsetinfo *info) {
   int p;
   Instruction *I = &getinstr(compst, inst);
   byte *charset;
   int isize = instsize(info->size);  /* size in instructions */
   int i;
-  I->i.aux2.set.offset = info->aux1 * 8;  /* offset in bits */
+  I->i.aux2.set.offset = info->offset * 8;  /* offset in bits */
   I->i.aux2.set.size = isize;
   I->i.aux1 = info->deflt;
   p = nextinstruction(compst, isize);  /* space for charset */
   charset = getinstr(compst, p).buff;  /* charset buffer */
   for (i = 0; i < isize * (int)sizeof(Instruction); i++)
-    charset[i] = getbytefromcharset(cs, info, i);  /* fill the buffer */
+    charset[i] = getbytefromcharset(info, i);  /* copy the buffer */
 }
 
 
 /*
-** Check whether compact charset cs is dominated by instruction 'p'
+** Check whether charset 'info' is dominated by instruction 'p'
 */
-static int cs_equal (Instruction *p, const byte *cs, charsetinfo *info) {
+static int cs_equal (Instruction *p, charsetinfo *info) {
   if (p->i.code != ITestSet)
     return 0;
-  else if (p->i.aux2.set.offset != info->aux1 * 8 ||
+  else if (p->i.aux2.set.offset != info->offset * 8 ||
            p->i.aux2.set.size != instsize(info->size) ||
            p->i.aux1 != info->deflt)
     return 0;
   else {
     int i;
     for (i = 0; i < instsize(info->size) * (int)sizeof(Instruction); i++) {
-      if ((p + 2)->buff[i] != getbytefromcharset(cs, info, i))
+      if ((p + 2)->buff[i] != getbytefromcharset(info, i))
         return 0;
     }
   }
@@ -582,34 +552,23 @@ static int cs_equal (Instruction *p, const byte *cs, charsetinfo *info) {
 
 
 /*
-** code a char set, optimizing unit sets for IChar, "complete"
-** sets for IAny, and empty sets for IFail; also use an IAny
-** when instruction is dominated by an equivalent test.
+** Code a char set, using IAny when instruction is dominated by an
+** equivalent test.
 */
-static void codecharset (CompileState *compst, const byte *cs, int tt) {
+static void codecharset (CompileState *compst, TTree *tree, int tt) {
   charsetinfo info;
-  Opcode op = charsettype(cs, &info);
-  switch (op) {
-    case IChar: codechar(compst, info.aux1, tt); break;
-    case ISet: {  /* non-trivial set? */
-      if (tt >= 0 && cs_equal(&getinstr(compst, tt), cs, &info))
-        addinstruction(compst, IAny, 0);
-      else {
-        int i = addinstruction(compst, ISet, 0);
-        addcharset(compst, i, cs, &info);
-      }
-      break;
-    }
-    default:
-      assert(op == IFail || op == IAny);
-      addinstruction(compst, op, 0);
-      break;
+  tree2cset(tree, &info);
+  if (tt >= 0 && cs_equal(&getinstr(compst, tt), &info))
+    addinstruction(compst, IAny, 0);
+  else {
+    int i = addinstruction(compst, ISet, 0);
+    addcharset(compst, i, &info);
   }
 }
 
 
 /*
-** code a test set, optimizing unit sets for ITestChar, "complete"
+** Code a test set, optimizing unit sets for ITestChar, "complete"
 ** sets for ITestAny, and empty sets for IJmp (always fails).
 ** 'e' is true iff test should accept the empty string. (Test
 ** instructions in the current VM never accept the empty string.)
@@ -624,12 +583,12 @@ static int codetestset (CompileState *compst, Charset *cs, int e) {
       case IAny: return addoffsetinst(compst, ITestAny);
       case IChar: {
         int i = addoffsetinst(compst, ITestChar);
-        getinstr(compst, i).i.aux1 = info.aux1;
+        getinstr(compst, i).i.aux1 = info.offset;
         return i;
       }
       default: {  /* regular set */
         int i = addoffsetinst(compst, ITestSet);
-        addcharset(compst, i, cs->cs, &info);
+        addcharset(compst, i, &info);
         assert(op == ISet);
         return i;
       }
@@ -778,34 +737,35 @@ static void closeloop (CompileState *compst, int test) {
 
 
 /*
-** Repetition of charsets:
+** Try repetition of charsets:
 ** For an empty set, repetition of fail is a no-op;
 ** For any or char, code a tight loop;
 ** For generic charset, use a span instruction.
 */
-static void coderepcharset (CompileState *compst, Charset *st) {
-  charsetinfo info;
-  Opcode op = charsettype(st->cs, &info);
-  switch (op) {
-    case IFail: break;  /* fail* is a no-op */
-    case IAny: {  /* L1: testany -> L2; any; jmp L1; L2: */
+static int coderepcharset (CompileState *compst, TTree *tree) {
+  switch (tree->tag) {
+    case TFalse: return 1;  /* 'fail*' is a no-op */
+    case TAny: {  /* L1: testany -> L2; any; jmp L1; L2: */
       int test = addoffsetinst(compst, ITestAny);
       addinstruction(compst, IAny, 0);
       closeloop(compst, test);
-      break;
+      return 1;
     }
-    case IChar: {  /* L1: testchar c -> L2; any; jmp L1; L2: */
+    case TChar: {  /* L1: testchar c -> L2; any; jmp L1; L2: */
       int test = addoffsetinst(compst, ITestChar);
-      getinstr(compst, test).i.aux1 = info.aux1;
+      getinstr(compst, test).i.aux1 = tree->u.n;
       addinstruction(compst, IAny, 0);
       closeloop(compst, test);
-      break;
+      return 1;
     }
-    default: {  /* regular set */
+    case TSet: {  /* regular set */
+      charsetinfo info;
       int i = addinstruction(compst, ISpan, 0);
-      addcharset(compst, i, st->cs, &info);
-      assert(op == ISet);
+      tree2cset(tree, &info);
+      addcharset(compst, i, &info);
+      return 1;
     }
+    default: return 0;  /* not a charset */
   }
 }
 
@@ -822,10 +782,8 @@ static void coderepcharset (CompileState *compst, Charset *st) {
 */
 static void coderep (CompileState *compst, TTree *tree, int opt,
                      const Charset *fl) {
-  Charset st;
-  if (tocharset(tree, &st))
-    coderepcharset(compst, &st);
-  else {
+  if (!coderepcharset(compst, tree)) {
+    Charset st;
     int e1 = getfirst(tree, fullset, &st);
     if (headfail(tree) || (!e1 && cs_disjoint(&st, fl))) {
       /* L1: test (fail(p1)) -> L2; <p>; jmp L1; L2: */
@@ -965,7 +923,7 @@ static void codegen (CompileState *compst, TTree *tree, int opt, int tt,
   switch (tree->tag) {
     case TChar: codechar(compst, tree->u.n, tt); break;
     case TAny: addinstruction(compst, IAny, 0); break;
-    case TSet: codecharset(compst, treebuffer(tree), tt); break;
+    case TSet: codecharset(compst, tree, tt); break;
     case TTrue: break;
     case TFalse: addinstruction(compst, IFail, 0); break;
     case TUTFR: codeutfr(compst, tree); break;

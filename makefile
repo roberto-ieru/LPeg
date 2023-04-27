@@ -1,9 +1,9 @@
 LIBNAME = lpeg
 LUADIR = ./lua/
 
-COPT = -O2 -DNDEBUG
+# COPT = -O2 -DNDEBUG
 # COPT = -g
-# COPT = -DLPEG_DEBUG
+COPT = -DLPEG_DEBUG -g
 
 CWARNS = -Wall -Wextra -pedantic \
 	-Waggregate-return \
@@ -49,8 +49,9 @@ clean:
 
 
 lpcap.o: lpcap.c lpcap.h lptypes.h
-lpcode.o: lpcode.c lptypes.h lpcode.h lptree.h lpvm.h lpcap.h
-lpprint.o: lpprint.c lptypes.h lpprint.h lptree.h lpvm.h lpcap.h
-lptree.o: lptree.c lptypes.h lpcap.h lpcode.h lptree.h lpvm.h lpprint.h
+lpcode.o: lpcode.c lptypes.h lpcode.h lptree.h lpvm.h lpcap.h lpcset.h
+lpcset.o: lpcset.c lptypes.h lpcset.h lpcode.h lptree.h lpvm.h lpcap.h
+lpprint.o: lpprint.c lptypes.h lpprint.h lptree.h lpvm.h lpcap.h lpcode.h
+lptree.o: lptree.c lptypes.h lpcap.h lpcode.h lptree.h lpvm.h lpprint.h \
+ lpcset.h
 lpvm.o: lpvm.c lpcap.h lptypes.h lpvm.h lpprint.h lptree.h
-lpcset.o: lpcset.c lpcset.h lptypes.h

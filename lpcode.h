@@ -8,7 +8,6 @@
 #include "lptree.h"
 #include "lpvm.h"
 
-int tocharset (TTree *tree, Charset *cs);
 int checkaux (TTree *tree, int pred);
 int fixedlen (TTree *tree);
 int hascaptures (TTree *tree);

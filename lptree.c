@@ -12,6 +12,7 @@
 #include "lpcode.h"
 #include "lpprint.h"
 #include "lptree.h"
+#include "lpcset.h"
 
 
 /* number of siblings for each tree */
@@ -370,11 +371,34 @@ static TTree *newleaf (lua_State *L, int tag) {
 }
 
 
-static TTree *newcharset (lua_State *L) {
-  TTree *tree = newtree(L, bytes2slots(CHARSETSIZE) + 1);
+static TTree *newccharset (lua_State *L, byte *cs, charsetinfo *info) {
+  int i;
+  TTree *tree = newtree(L, bytes2slots(info->size) + 1);
   tree->tag = TSet;
-  loopset(i, treebuffer(tree)[i] = 0);
+  tree->u.set.offset = info->offset;
+  tree->u.set.size = info->size;
+  tree->u.set.deflt = info->deflt;
+  for (i = 0; i < info->size; i++)
+    treebuffer(tree)[i] = cs[info->offset + i];
   return tree;
+}
+
+
+static TTree *newcharset (lua_State *L, byte *cs) {
+  charsetinfo info;
+  Opcode op = charsettype(cs, &info);
+  switch (op) {
+    case IFail: return newleaf(L, TFalse);
+    case IAny: return newleaf(L, TAny);
+    case IChar: {
+      TTree *tree =newleaf(L, TChar);
+      tree->u.n = info.offset;
+      return tree;
+    }
+    default:
+      assert(op == ISet);
+      return newccharset(L, cs, &info);
+  }
 }
 
 
@@ -549,8 +573,8 @@ static int lp_choice (lua_State *L) {
   TTree *t1 = getpatt(L, 1, NULL);
   TTree *t2 = getpatt(L, 2, NULL);
   if (tocharset(t1, &st1) && tocharset(t2, &st2)) {
-    TTree *t = newcharset(L);
-    loopset(i, treebuffer(t)[i] = st1.cs[i] | st2.cs[i]);
+    loopset(i, st1.cs[i] |= st2.cs[i]);
+    newcharset(L, st1.cs);
   }
   else if (nofail(t1) || t2->tag == TFalse)
     lua_pushvalue(L, 1);  /* true / x => true, x / false => x */
@@ -626,8 +650,8 @@ static int lp_sub (lua_State *L) {
   TTree *t1 = getpatt(L, 1, &s1);
   TTree *t2 = getpatt(L, 2, &s2);
   if (tocharset(t1, &st1) && tocharset(t2, &st2)) {
-    TTree *t = newcharset(L);
-    loopset(i, treebuffer(t)[i] = st1.cs[i] & ~st2.cs[i]);
+    loopset(i, st1.cs[i] &= ~st2.cs[i]);
+    newcharset(L, st1.cs);
   }
   else {
     TTree *tree = newtree(L, 2 + s1 + s2);
@@ -645,11 +669,13 @@ static int lp_sub (lua_State *L) {
 static int lp_set (lua_State *L) {
   size_t l;
   const char *s = luaL_checklstring(L, 1, &l);
-  TTree *tree = newcharset(L);
+  byte buff[CHARSETSIZE];
+  loopset(i, buff[i] = 0);
   while (l--) {
-    setchar(treebuffer(tree), (byte)(*s));
+    setchar(buff, (byte)(*s));
     s++;
   }
+  newcharset(L, buff);
   return 1;
 }
 
@@ -657,15 +683,17 @@ static int lp_set (lua_State *L) {
 static int lp_range (lua_State *L) {
   int arg;
   int top = lua_gettop(L);
-  TTree *tree = newcharset(L);
+  byte buff[CHARSETSIZE];
+  loopset(i, buff[i] = 0);
   for (arg = 1; arg <= top; arg++) {
     int c;
     size_t l;
     const char *r = luaL_checklstring(L, arg, &l);
     luaL_argcheck(L, l == 2, arg, "range must have two characters");
     for (c = (byte)r[0]; c <= (byte)r[1]; c++)
-      setchar(treebuffer(tree), c);
+      setchar(buff, c);
   }
+  newcharset(L, buff);
   return 1;
 }
 
@@ -704,10 +732,12 @@ static int lp_utfr (lua_State *L) {
   lua_Unsigned to = (lua_Unsigned)luaL_checkinteger(L, 2);
   luaL_argcheck(L, from <= to, 2, "empty range");
   if (to <= 0x7f) {  /* ascii range? */
-    TTree *tree = newcharset(L);  /* code it as a regular charset */
     unsigned int f;
+    byte buff[CHARSETSIZE];  /* code it as a regular charset */
+    loopset(i, buff[i] = 0);
     for (f = (int)from; f <= to; f++)
-      setchar(treebuffer(tree), f);
+      setchar(buff, f);
+    newcharset(L, buff);
   }
   else {  /* multi-byte utf-8 range */
     TTree *tree = newtree(L, 2);
@@ -1261,11 +1291,17 @@ int lp_gc (lua_State *L) {
 }
 
 
+/*
+** Create a charset representing a category of characters, given by
+** the predicate 'catf'.
+*/
 static void createcat (lua_State *L, const char *catname, int (catf) (int)) {
-  TTree *t = newcharset(L);
-  int i;
-  for (i = 0; i <= UCHAR_MAX; i++)
-    if (catf(i)) setchar(treebuffer(t), i);
+  int c;
+  byte buff[CHARSETSIZE];
+  loopset(i, buff[i] = 0);
+  for (c = 0; c <= UCHAR_MAX; c++)
+    if (catf(c)) setchar(buff, c);
+  newcharset(L, buff);
   lua_setfield(L, -2, catname);
 }
 

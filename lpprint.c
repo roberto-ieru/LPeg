@@ -46,6 +46,17 @@ static void printIcharset (const Instruction *inst, const byte *buff) {
 }
 
 
+static void printTcharset (TTree *tree) {
+  byte cs[CHARSETSIZE];
+  int i;
+  printf("(%02x-%d) ", tree->u.set.offset, tree->u.set.size);
+  loopset(j, cs[j] = tree->u.set.deflt);
+  for (i = 0; i < tree->u.set.size; i++)
+    cs[tree->u.set.offset + i] = treebuffer(tree)[i];
+  printcharset(cs);
+}
+
+
 static const char *capkind (int kind) {
   const char *const modes[] = {
     "close", "position", "constant", "backref",
@@ -186,7 +197,7 @@ void printtree (TTree *tree, int ident) {
       break;
     }
     case TSet: {
-      printcharset(treebuffer(tree));
+      printTcharset(tree);
       printf("\n");
       break;
     }

@@ -3,7 +3,7 @@
 #define lptree_h
 
 
-#include "lptypes.h" 
+#include "lptypes.h"
 
 
 /*
@@ -11,7 +11,7 @@
 */
 typedef enum TTag {
   TChar = 0,  /* 'n' = char */
-  TSet,  /* the set is stored in next CHARSETSIZE bytes */
+  TSet,  /* the set is encoded in 'u.set' and the next 'u.set.size' bytes */
   TAny,
   TTrue,
   TFalse,
@@ -52,6 +52,11 @@ typedef struct TTree {
   union {
     int ps;  /* occasional second child */
     int n;  /* occasional counter */
+    struct {
+      byte offset;  /* compact set offset (in bytes) */
+      byte size;  /* compact set size (in bytes) */
+      byte deflt;  /* default value */
+    } set;  /* for compact sets */
   } u;
 } TTree;
 
