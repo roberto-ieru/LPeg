@@ -10,6 +10,7 @@
 
 #include <assert.h>
 #include <limits.h>
+#include <string.h>
 
 #include "lua.h"
 
@@ -96,6 +97,9 @@ typedef struct Charset {
 
 
 #define loopset(v,b)    { int v; for (v = 0; v < CHARSETSIZE; v++) {b;} }
+
+#define fillset(s,c)	memset(s,c,CHARSETSIZE)
+#define clearset(s)	fillset(s,0)
 
 /* access to charset */
 #define treebuffer(t)      ((byte *)((t) + 1))

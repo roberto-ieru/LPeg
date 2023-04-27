@@ -221,7 +221,7 @@ static int getfirst (TTree *tree, const Charset *follow, Charset *firstset) {
     }
     case TUTFR: {
       int c;
-      loopset(i, firstset->cs[i] = 0);  /* erase all chars */
+      clearset(firstset->cs);  /* erase all chars */
       for (c = tree->key; c <= sib1(tree)->key; c++)
         setchar(firstset->cs, c);
       return 0;

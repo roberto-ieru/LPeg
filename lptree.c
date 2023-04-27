@@ -670,7 +670,7 @@ static int lp_set (lua_State *L) {
   size_t l;
   const char *s = luaL_checklstring(L, 1, &l);
   byte buff[CHARSETSIZE];
-  loopset(i, buff[i] = 0);
+  clearset(buff);
   while (l--) {
     setchar(buff, (byte)(*s));
     s++;
@@ -684,7 +684,7 @@ static int lp_range (lua_State *L) {
   int arg;
   int top = lua_gettop(L);
   byte buff[CHARSETSIZE];
-  loopset(i, buff[i] = 0);
+  clearset(buff);
   for (arg = 1; arg <= top; arg++) {
     int c;
     size_t l;
@@ -734,7 +734,7 @@ static int lp_utfr (lua_State *L) {
   if (to <= 0x7f) {  /* ascii range? */
     unsigned int f;
     byte buff[CHARSETSIZE];  /* code it as a regular charset */
-    loopset(i, buff[i] = 0);
+    clearset(buff);
     for (f = (int)from; f <= to; f++)
       setchar(buff, f);
     newcharset(L, buff);
@@ -1298,7 +1298,7 @@ int lp_gc (lua_State *L) {
 static void createcat (lua_State *L, const char *catname, int (catf) (int)) {
   int c;
   byte buff[CHARSETSIZE];
-  loopset(i, buff[i] = 0);
+  clearset(buff);
   for (c = 0; c <= UCHAR_MAX; c++)
     if (catf(c)) setchar(buff, c);
   newcharset(L, buff);
@@ -1373,6 +1373,7 @@ static struct luaL_Reg metareg[] = {
 
 int luaopen_lpeg (lua_State *L);
 int luaopen_lpeg (lua_State *L) {
+printf("%ld\n", sizeof(TTree));
   luaL_newmetatable(L, PATTERN_T);
   lua_pushnumber(L, MAXBACK);  /* initialize maximum backtracking */
   lua_setfield(L, LUA_REGISTRYINDEX, MAXSTACKIDX);

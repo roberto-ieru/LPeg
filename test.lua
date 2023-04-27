@@ -1227,6 +1227,12 @@ do   -- a few typical UTF-8 ranges
          t[5] == "cjk: " .. cjk and t[6] == "other: —" and
          t[7] == "ascii: " .. ascii and t[8] == "other: " .. last and
          t[9] == nil)
+
+  -- failing UTF-8 matches and borders
+  assert(not m.match(m.utfR(10, 0x2000), "\9"))
+  assert(not m.match(m.utfR(10, 0x2000), "\226\128\129"))
+  assert(m.match(m.utfR(10, 0x2000), "\10") == 2)
+  assert(m.match(m.utfR(10, 0x2000), "\226\128\128") == 4)
 end
 
 

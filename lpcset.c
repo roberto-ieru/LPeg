@@ -76,21 +76,21 @@ int tocharset (TTree *tree, Charset *cs) {
   switch (tree->tag) {
     case TChar: {  /* only one char */
       assert(0 <= tree->u.n && tree->u.n <= UCHAR_MAX);
-      loopset(i, cs->cs[i] = 0);  /* erase all chars */
+      clearset(cs->cs);  /* erase all chars */
       setchar(cs->cs, tree->u.n);  /* add that one */
       return 1;
     }
     case TAny: {
-      loopset(i, cs->cs[i] = 0xFF);  /* add all characters to the set */
+      fillset(cs->cs, 0xFF);  /* add all characters to the set */
       return 1;
     }
     case TFalse: {
-      loopset(i, cs->cs[i] = 0);  /* empty set */
+      clearset(cs->cs);  /* empty set */
       return 1;
     }
     case TSet: {  /* fill set */
       int i;
-      loopset(j, cs->cs[j] = tree->u.set.deflt);
+      fillset(cs->cs, tree->u.set.deflt);
       for (i = 0; i < tree->u.set.size; i++)
         cs->cs[tree->u.set.offset + i] = treebuffer(tree)[i];
       return 1;

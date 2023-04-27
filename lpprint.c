@@ -37,7 +37,7 @@ static void printIcharset (const Instruction *inst, const byte *buff) {
   byte cs[CHARSETSIZE];
   int i;
   printf("(%02x-%d) ", inst->i.aux2.set.offset, inst->i.aux2.set.size);
-  loopset(j, cs[j] = 0);
+  clearset(cs);
   for (i = 0; i < CHARSETSIZE * 8; i++) {
     if (charinset(inst, buff, i))
       setchar(cs, i);
@@ -50,7 +50,7 @@ static void printTcharset (TTree *tree) {
   byte cs[CHARSETSIZE];
   int i;
   printf("(%02x-%d) ", tree->u.set.offset, tree->u.set.size);
-  loopset(j, cs[j] = tree->u.set.deflt);
+  fillset(cs, tree->u.set.deflt);
   for (i = 0; i < tree->u.set.size; i++)
     cs[tree->u.set.offset + i] = treebuffer(tree)[i];
   printcharset(cs);
