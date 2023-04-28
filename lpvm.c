@@ -23,10 +23,10 @@
 static const Instruction giveup = {{IGiveup, 0, {0}}};
 
 
-int charinset (const Instruction *i, const byte *buff, unsigned int c) {
+int charinset (const Instruction *i, const byte *buff, uint c) {
   c -= i->i.aux2.set.offset;
-  if (c >= ((unsigned int)i->i.aux2.set.size  /* size in instructions... */
-           * (unsigned int)sizeof(Instruction)  /* in bytes... */
+  if (c >= ((uint)i->i.aux2.set.size  /* size in instructions... */
+           * (uint)sizeof(Instruction)  /* in bytes... */
            * 8u))  /* in bits */
     return i->i.aux1;  /* out of range; return default value */
   return testchar(buff, c);
@@ -37,10 +37,10 @@ int charinset (const Instruction *i, const byte *buff, unsigned int c) {
 ** Decode one UTF-8 sequence, returning NULL if byte sequence is invalid.
 */
 static const char *utf8_decode (const char *o, int *val) {
-  static const unsigned int limits[] = {0xFF, 0x7F, 0x7FF, 0xFFFFu};
+  static const uint limits[] = {0xFF, 0x7F, 0x7FF, 0xFFFFu};
   const unsigned char *s = (const unsigned char *)o;
-  unsigned int c = s[0];  /* first byte */
-  unsigned int res = 0;  /* final result */
+  uint c = s[0];  /* first byte */
+  uint res = 0;  /* final result */
   if (c < 0x80)  /* ascii? */
     res = c;
   else {
@@ -99,7 +99,7 @@ static Capture *growcap (lua_State *L, Capture *capture, int *capsize,
     return capture;  /* no need to grow array */
   else {  /* must grow */
     Capture *newc;
-    unsigned int newsize = captop + n + 1;  /* minimum size needed */
+    uint newsize = captop + n + 1;  /* minimum size needed */
     if (newsize < (MAXNEWSIZE / 3) * 2)
       newsize += newsize / 2;  /* 1.5 that size, if not too big */
     else if (newsize < (MAXNEWSIZE / 9) * 8)
@@ -269,14 +269,14 @@ const char *match (lua_State *L, const char *o, const char *s, const char *e,
         continue;
       }
       case ISet: {
-        unsigned int c = (byte)*s;
+        uint c = (byte)*s;
         if (charinset(p, (p+1)->buff, c) && s < e)
           { p += 1 + p->i.aux2.set.size; s++; }
         else goto fail;
         continue;
       }
       case ITestSet: {
-        unsigned int c = (byte)*s;
+        uint c = (byte)*s;
         if (charinset(p, (p + 2)->buff, c) && s < e)
           p += 2 + p->i.aux2.set.size;
         else p += getoffset(p);
@@ -290,7 +290,7 @@ const char *match (lua_State *L, const char *o, const char *s, const char *e,
       }
       case ISpan: {
         for (; s < e; s++) {
-          unsigned int c = (byte)*s;
+          uint c = (byte)*s;
           if (!charinset(p, (p+1)->buff, c)) break;
         }
         p += 1 + p->i.aux2.set.size;

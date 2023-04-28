@@ -83,6 +83,8 @@ typedef size_t lua_Unsigned;
 
 typedef unsigned char byte;
 
+typedef unsigned int uint;
+
 
 #define BITSPERCHAR		8
 
@@ -102,7 +104,7 @@ typedef struct Charset {
 #define clearset(s)	fillset(s,0)
 
 /* number of slots needed for 'n' bytes */
-#define bytes2slots(n)  (((n) - 1u) / (unsigned int)sizeof(TTree) + 1u)
+#define bytes2slots(n)  (((n) - 1u) / (uint)sizeof(TTree) + 1u)
 
 /* set 'b' bit in charset 'cs' */
 #define setchar(cs,b)   ((cs)[(b) >> 3] |= (1 << ((b) & 7)))
@@ -129,8 +131,8 @@ typedef struct Charset {
 
 
 /* size (in instructions) for l bytes (l > 0) */
-#define instsize(l) ((int)(((l) + (unsigned int)sizeof(Instruction) - 1u) \
-			/ (unsigned int)sizeof(Instruction)))
+#define instsize(l) ((int)(((l) + (uint)sizeof(Instruction) - 1u) \
+			/ (uint)sizeof(Instruction)))
 
 
 /* size (in elements) for a ISet instruction */
@@ -141,7 +143,7 @@ typedef struct Charset {
 
 
 
-#define testchar(st,c)	((((unsigned int)(st)[((c) >> 3)]) >> ((c) & 7)) & 1)
+#define testchar(st,c)	((((uint)(st)[((c) >> 3)]) >> ((c) & 7)) & 1)
 
 
 #endif

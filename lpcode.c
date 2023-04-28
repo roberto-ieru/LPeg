@@ -412,7 +412,7 @@ static int nextinstruction (CompileState *compst, int n) {
   int size = compst->p->codesize;
   int ncode = compst->ncode;
   if (ncode >= size - n) {
-    unsigned int nsize = size + (size >> 1) + n;
+    uint nsize = size + (size >> 1) + n;
     if (nsize > INT_MAX)
       luaL_error(compst->L, "code too large");
     realloccode(compst->L, compst->p, nsize);

@@ -65,7 +65,7 @@ typedef union Instruction {
 #define utf_to(inst)	(((inst)->i.aux2.key << 8) | (inst)->i.aux1)
 
 
-int charinset (const Instruction *i, const byte *buff, unsigned int c);
+int charinset (const Instruction *i, const byte *buff, uint c);
 void printpatt (Instruction *p, int n);
 const char *match (lua_State *L, const char *o, const char *s, const char *e,
                    Instruction *op, Capture *capture, int ptop);

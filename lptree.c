@@ -736,7 +736,7 @@ static int lp_utfr (lua_State *L) {
   lua_Unsigned to = (lua_Unsigned)luaL_checkinteger(L, 2);
   luaL_argcheck(L, from <= to, 2, "empty range");
   if (to <= 0x7f) {  /* ascii range? */
-    unsigned int f;
+    uint f;
     byte buff[CHARSETSIZE];  /* code it as a regular charset */
     clearset(buff);
     for (f = (int)from; f <= to; f++)
