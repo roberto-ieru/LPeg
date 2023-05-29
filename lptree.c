@@ -359,7 +359,7 @@ static TTree *newtree (lua_State *L, int len) {
   lua_pushvalue(L, -1);
   lua_setuservalue(L, -3);
   lua_setmetatable(L, -2);
-  p->code = NULL;  p->codesize = 0;
+  p->code = NULL;
   return p->tree;
 }
 
@@ -1189,7 +1189,7 @@ static Instruction *prepcompile (lua_State *L, Pattern *p, int idx) {
   lua_getuservalue(L, idx);  /* push 'ktable' (may be used by 'finalfix') */
   finalfix(L, 0, NULL, p->tree);
   lua_pop(L, 1);  /* remove 'ktable' */
-  return compile(L, p);
+  return compile(L, p, getsize(L, idx));
 }
 
 
@@ -1212,7 +1212,7 @@ static int lp_printcode (lua_State *L) {
   printktable(L, 1);
   if (p->code == NULL)  /* not compiled yet? */
     prepcompile(L, p, 1);
-  printpatt(p->code, p->codesize);
+  printpatt(p->code);
   return 0;
 }
 
@@ -1290,7 +1290,7 @@ static int lp_type (lua_State *L) {
 
 int lp_gc (lua_State *L) {
   Pattern *p = getpattern(L, 1);
-  realloccode(L, p, 0);  /* delete code block */
+  freecode(L, p);  /* delete code block */
   return 0;
 }
 
@@ -1377,7 +1377,6 @@ static struct luaL_Reg metareg[] = {
 
 int luaopen_lpeg (lua_State *L);
 int luaopen_lpeg (lua_State *L) {
-printf("%ld\n", sizeof(TTree));
   luaL_newmetatable(L, PATTERN_T);
   lua_pushnumber(L, MAXBACK);  /* initialize maximum backtracking */
   lua_setfield(L, LUA_REGISTRYINDEX, MAXSTACKIDX);

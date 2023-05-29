@@ -72,7 +72,6 @@ typedef struct TTree {
 */
 typedef struct Pattern {
   union Instruction *code;
-  int codesize;
   TTree tree[1];
 } Pattern;
 

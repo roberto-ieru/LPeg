@@ -43,7 +43,11 @@ typedef enum Opcode {
 } Opcode;
 
 
-
+/*
+** All array of instructions has a 'codesize' as its first element
+** and is referred by a pointer to its second element, which is the
+** first actual opcode.
+*/
 typedef union Instruction {
   struct Inst {
     byte code;
@@ -57,6 +61,7 @@ typedef union Instruction {
     } aux2;
   } i;
   int offset;
+  uint codesize;
   byte buff[1];
 } Instruction;
 
@@ -66,7 +71,6 @@ typedef union Instruction {
 
 
 int charinset (const Instruction *i, const byte *buff, uint c);
-void printpatt (Instruction *p, int n);
 const char *match (lua_State *L, const char *o, const char *s, const char *e,
                    Instruction *op, Capture *capture, int ptop);
 

@@ -392,29 +392,63 @@ static void codegen (CompileState *compst, TTree *tree, int opt, int tt,
                      const Charset *fl);
 
 
-void realloccode (lua_State *L, Pattern *p, int nsize) {
-  void *ud;
-  lua_Alloc f = lua_getallocf(L, &ud);
-  void *newblock = f(ud, p->code, p->codesize * sizeof(Instruction),
-                                  nsize * sizeof(Instruction));
-  if (newblock == NULL && nsize > 0)
+static void finishrelcode (lua_State *L, Pattern *p, Instruction *block,
+                                         int size) {
+  if (block == NULL)
     luaL_error(L, "not enough memory");
-  p->code = (Instruction *)newblock;
-  p->codesize = nsize;
+  block->codesize = size;
+  p->code = (Instruction *)block + 1;
 }
 
 
 /*
-** Add space for 'n' more instructions and return the index of
-** the first one.
+** Initialize array 'p->code'
+*/
+static void newcode (lua_State *L, Pattern *p, int size) {
+  void *ud;
+  Instruction *block;
+  lua_Alloc f = lua_getallocf(L, &ud);
+  size++;  /* slot for 'codesize' */
+  block = (Instruction*) f(ud, NULL, 0, size * sizeof(Instruction));
+  finishrelcode(L, p, block, size);
+}
+
+
+void freecode (lua_State *L, Pattern *p) {
+  if (p->code != NULL) {
+    void *ud;
+    lua_Alloc f = lua_getallocf(L, &ud);
+    uint osize = p->code[-1].codesize;
+    f(ud, p->code - 1, osize * sizeof(Instruction), 0);  /* free block */
+  }
+}
+
+
+/*
+** Assume that 'nsize' is not zero and that 'p->code' already exists.
+*/
+static void realloccode (lua_State *L, Pattern *p, int nsize) {
+  void *ud;
+  lua_Alloc f = lua_getallocf(L, &ud);
+  Instruction *block = p->code - 1;
+  uint osize = block->codesize;
+  nsize++;  /* add the 'codesize' slot to size */
+  block = (Instruction*) f(ud, block, osize * sizeof(Instruction),
+                                      nsize * sizeof(Instruction));
+  finishrelcode(L, p, block, nsize);
+}
+
+
+/*
+** Add space for an instruction with 'n' slots and return its index.
 */
 static int nextinstruction (CompileState *compst, int n) {
-  int size = compst->p->codesize;
+  int size = compst->p->code[-1].codesize - 1;
   int ncode = compst->ncode;
-  if (ncode >= size - n) {
+  if (ncode > size - n) {
     uint nsize = size + (size >> 1) + n;
-    if (nsize > INT_MAX)
-      luaL_error(compst->L, "code too large");
+    if (nsize >= INT_MAX)
+      luaL_error(compst->L, "pattern code too large");
     realloccode(compst->L, compst->p, nsize);
   }
   compst->ncode = ncode + n;
@@ -998,12 +1032,13 @@ static void peephole (CompileState *compst) {
 
 
 /*
-** Compile a pattern
+** Compile a pattern. 'size' is the size of the pattern's tree,
+** which gives a hint for the size of the final code.
 */
-Instruction *compile (lua_State *L, Pattern *p) {
+Instruction *compile (lua_State *L, Pattern *p, uint size) {
   CompileState compst;
   compst.p = p;  compst.ncode = 0;  compst.L = L;
-  realloccode(L, p, 4);  /* minimum initial size */
+  newcode(L, p, size/2u + 2);  /* set initial size */
   codegen(&compst, p->tree, 0, NOINST, fullset);
   addinstruction(&compst, IEnd, 0);
   realloccode(L, p, compst.ncode);  /* set final size */

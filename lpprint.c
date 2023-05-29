@@ -137,8 +137,9 @@ void printinst (const Instruction *op, const Instruction *p) {
 }
 
 
-void printpatt (Instruction *p, int n) {
+void printpatt (Instruction *p) {
   Instruction *op = p;
+  uint n = op[-1].codesize - 1;
   while (p < op + n) {
     printinst(op, p);
     p += sizei(p);

@@ -9,7 +9,7 @@
 
 #if defined(LPEG_DEBUG)
 
-void printpatt (Instruction *p, int n);
+void printpatt (Instruction *p);
 void printtree (TTree *tree, int ident);
 void printktable (lua_State *L, int idx);
 void printcharset (const byte *st);
