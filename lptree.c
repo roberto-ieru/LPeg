@@ -19,7 +19,7 @@
 const byte numsiblings[] = {
   0, 0, 0,	/* char, set, any */
   0, 0, 0,	/* true, false, utf-range */
-  1,		/* rep */
+  1,		/* acc */
   2, 2,		/* seq, choice */
   1, 1,		/* not, and */
   0, 0, 2, 1, 1,  /* call, opencall, rule, prerule, grammar */
@@ -850,6 +850,11 @@ static int lp_divcapture (lua_State *L) {
 }
 
 
+static int lp_acccapture (lua_State *L) {
+  return capture_aux(L, Cacc, 2);
+}
+
+
 static int lp_substcapture (lua_State *L) {
   return capture_aux(L, Csubst, 0);
 }
@@ -1250,7 +1255,7 @@ static int lp_match (lua_State *L) {
   int ptop = lua_gettop(L);
   lua_pushnil(L);  /* initialize subscache */
   lua_pushlightuserdata(L, capture);  /* initialize caplistidx */
-  lua_getuservalue(L, 1);  /* initialize penvidx */
+  lua_getuservalue(L, 1);  /* initialize ktableidx */
   r = match(L, s, s + i, s + l, code, capture, ptop);
   if (r == NULL) {
     lua_pushnil(L);
@@ -1369,6 +1374,7 @@ static struct luaL_Reg metareg[] = {
   {"__gc", lp_gc},
   {"__len", lp_and},
   {"__div", lp_divcapture},
+  {"__mod", lp_acccapture},
   {"__unm", lp_not},
   {"__sub", lp_sub},
   {NULL, NULL}

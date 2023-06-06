@@ -3,7 +3,7 @@ LUADIR = ./lua/
 
 # COPT = -O2 -DNDEBUG
 # COPT = -g
-COPT = -DLPEG_DEBUG -g
+COPT = -O0 -DLPEG_DEBUG -g
 
 CWARNS = -Wall -Wextra -pedantic \
 	-Waggregate-return \

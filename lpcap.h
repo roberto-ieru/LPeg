@@ -16,6 +16,7 @@ typedef enum CapKind {
   Csimple,  /* next node is pattern */
   Ctable,  /* next node is pattern */
   Cfunction,  /* ktable[key] is function; next node is pattern */
+  Cacc,  /* ktable[key] is function; next node is pattern */
   Cquery,  /* ktable[key] is table; next node is pattern */
   Cstring,  /* ktable[key] is string; next node is pattern */
   Cnum,  /* numbered capture; 'key' is number of value to return */
@@ -38,7 +39,8 @@ typedef struct CapState {
   Capture *cap;  /* current capture */
   Capture *ocap;  /* (original) capture list */
   lua_State *L;
-  int ptop;  /* index of last argument to 'match' */
+  int ptop;  /* stack index of last argument to 'match' */
+  int firstcap;  /* stack index of first capture pushed in the stack */
   const char *s;  /* original string */
   int valuecached;  /* value stored in cache slot */
   int reclevel;  /* recursion level */

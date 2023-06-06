@@ -638,6 +638,10 @@ or no value when <code>number</code> is zero.</td></tr>
 <tr><td><a href="#cap-func"><code>patt / function</code></a></td>
   <td>the returns of <code>function</code> applied to the captures
       of <code>patt</code></td></tr>
+<tr><td><a href="#cap-rep"><code>patt % function</code></a></td>
+  <td>the return of <code>function</code> applied to the previous
+      capture plus the captures of <code>patt</code></td></tr>;
+      the returned value becomes the value of the previous capture
 <tr><td><a href="#matchtime"><code>lpeg.Cmt(patt, function)</code></a></td>
   <td>the returns of <code>function</code> applied to the captures
       of <code>patt</code>; the application is done at match time</td></tr>
@@ -889,6 +893,75 @@ there is no captured value.
 </p>
 
 
+<h3><a name="cap-rep"></a><code>patt % function</code></h3>
+<p>
+Creates an <em>accumulator capture</em>.
+This pattern behaves similarly to a
+<a href="cap-func">function capture</a>,
+with the following differences:
+The last captured value is added as a first argument to
+the call;
+the return of the function is adjusted to one single value;
+that value becomes the last captured value.
+</p>
+
+<p>
+As an example,
+consider the following code fragment:
+</p>
+<pre class="example">
+local name = lpeg.C(lpeg.R("az")^1)
+local p = name * (lpeg.P("^") % string.upper)^-1
+print(p:match("count"))    --&gt; count
+print(p:match("count^"))   --&gt; COUNT
+</pre>
+<p>
+In the first match,
+the accumulator capture does not match,
+and so the match results in its first capture, a name.
+In the second match,
+the accumulator capture matches,
+so the function <code>string.upper</code>
+is called with the previous capture (created by <code>name</code>)
+plus the string <code>"^"</code>;
+the function ignores its second argument and returns the first argument
+changed to upper case;
+that value then becomes the first and only
+capture value created by the match.
+</p>
+-- matches a numeral and captures its numerical value
+number = lpeg.R"09"^1 / tonumber
+
+-- auxiliary function to add two numbers
+function add (acc, newvalue) return acc + newvalue end
+
+-- matches a list of numbers, adding their values
+sum = number * ("," * number % add)^0
+
+-- example of use
+print(sum:match("10,30,43"))   --&gt; 83
+</pre>
+<p>
+First, the initial <code>number</code> captures a number;
+that first capture will play the role of an accumulator.
+Then, each time <code>number</code> matches inside the loop
+there is a accumulator capture:
+It calls <code>add</code> with the current value of the accumulator
+and the value of the new number,
+and their sum replaces the value of the accumulator.
+At the end of the match,
+the accumulator with all sums is the final value.
+</p>
+
+<p>
+Due to the nature of this capture,
+you should avoid using it in places where it is not clear
+what is its "previous" capture.
+Due to implementation details,
+you should not use this capture inside a substitution capture.
+</p>
+
+
 <h3><a name="matchtime"></a><code>lpeg.Cmt(patt, function)</code></h3>
 <p>
 Creates a <em>match-time capture</em>.
@@ -968,19 +1041,17 @@ lpeg.locale(lpeg)   -- adds locale entries into 'lpeg' table
 local space = lpeg.space^0
 local name = lpeg.C(lpeg.alpha^1) * space
 local sep = lpeg.S(",;") * space
-local pair = lpeg.Cg(name * "=" * space * name) * sep^-1
-local list = lpeg.Cf(lpeg.Ct("") * pair^0, rawset)
+local pair = name * "=" * space * name * sep^-1
+local list = lpeg.Ct("") * (pair % rawset)^0
 t = list:match("a=b, c = hi; next = pi")  --> { a = "b", c = "hi", next = "pi" }
 </pre>
 <p>
 Each pair has the format <code>name = name</code> followed by
 an optional separator (a comma or a semicolon).
-The <code>pair</code> pattern encloses the pair in a group pattern,
-so that the names become the values of a single capture.
-The <code>list</code> pattern then folds these captures.
+The <code>list</code> pattern then <em>folds</em> these captures.
 It starts with an empty table,
 created by a table capture matching an empty string;
-then for each capture (a pair of names) it applies <code>rawset</code>
+then for each a pair of names it applies <code>rawset</code>
 over the accumulator (the table) and the capture values (the pair of names).
 <code>rawset</code> returns the table itself,
 so the accumulator is always the table.
@@ -1295,8 +1366,8 @@ end
 -- Grammar
 local V = lpeg.V
 G = lpeg.P{ "Exp",
-  Exp = lpeg.Cf(V"Term" * lpeg.Cg(TermOp * V"Term")^0, eval);
-  Term = lpeg.Cf(V"Factor" * lpeg.Cg(FactorOp * V"Factor")^0, eval);
+  Exp = V"Term" * (TermOp * V"Term" % eval)^0;
+  Term = V"Factor" * (FactorOp * V"Factor" % eval)^0;
   Factor = Number / tonumber + Open * V"Exp" * Close;
 }
 
@@ -1304,7 +1375,7 @@ G = lpeg.P{ "Exp",
 print(lpeg.match(G, "3 + 5*9 / (1+1) - 12"))   --> 13.5
 </pre>
 <p>
-Note the use of the fold (accumulator) capture.
+Note the use of the accumulator capture.
 To compute the value of an expression,
 the accumulator starts with the value of the first term,
 and then applies <code>eval</code> over

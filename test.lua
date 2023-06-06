@@ -493,8 +493,8 @@ local function f_term (v1, op, v2, d)
 end
 
 G = m.P{ "Exp",
-  Exp = m.Cf(V"Factor" * m.Cg(FactorOp * V"Factor")^0, f_factor);
-  Factor = m.Cf(V"Term" * m.Cg(TermOp * V"Term")^0, f_term);
+  Exp = V"Factor" * (FactorOp * V"Factor" % f_factor)^0;
+  Factor = V"Term" * (TermOp * V"Term" % f_term)^0;
   Term = Number / tonumber  +  Open * V"Exp" * Close;
 }
 
@@ -866,6 +866,7 @@ print"+"
 -- accumulator capture
 function f (x) return x + 1 end
 assert(m.match(m.Cf(m.Cc(0) * m.C(1)^0, f), "alo alo") == 7)
+assert(m.match(m.Cc(0) * (m.C(1) % f)^0, "alo alo") == 7)
 
 t = {m.match(m.Cf(m.Cc(1,2,3), error), "")}
 checkeq(t, {1})
@@ -875,7 +876,7 @@ t = p:match("a=b;c=du;xux=yuy;")
 checkeq(t, {a="b", c="du", xux="yuy"})
 
 
--- errors in accumulator capture
+-- errors in fold capture
 
 -- no initial capture
 checkerr("no initial value", m.match, m.Cf(m.P(5), print), 'aaaaaa')
@@ -883,8 +884,14 @@ checkerr("no initial value", m.match, m.Cf(m.P(5), print), 'aaaaaa')
 checkerr("no initial value", m.match, m.Cf(m.P(500), print),
                                string.rep('a', 600))
 
--- nested capture produces no initial value
-checkerr("no initial value", m.match, m.Cf(m.P(1) / {}, print), "alo")
+
+-- errors in accumulator capture
+
+-- no initial capture
+checkerr("no previous value", m.match, m.P(5) % print, 'aaaaaa')
+-- no initial capture (very long match forces fold to be a pair open-close)
+checkerr("no previous value", m.match, m.P(500) % print,
+                               string.rep('a', 600))
 
 
 -- tests for loop checker

@@ -60,7 +60,7 @@ static void printTcharset (TTree *tree) {
 static const char *capkind (int kind) {
   const char *const modes[] = {
     "close", "position", "constant", "backref",
-    "argument", "simple", "table", "function",
+    "argument", "simple", "table", "function", "replace",
     "query", "string", "num", "substitution", "fold",
     "runtime", "group"};
   return modes[kind];
@@ -147,7 +147,6 @@ void printpatt (Instruction *p) {
 }
 
 
-#if defined(LPEG_DEBUG)
 static void printcap (Capture *cap) {
   printf("%s (idx: %d - size: %d) -> %p\n",
          capkind(cap->kind), cap->idx, cap->siz, cap->s);
@@ -160,7 +159,6 @@ void printcaplist (Capture *cap, Capture *limit) {
     printcap(cap);
   printf("=======\n");
 }
-#endif
 
 /* }====================================================== */
 

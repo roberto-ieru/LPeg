@@ -231,6 +231,22 @@ static int functioncap (CapState *cs) {
 
 
 /*
+** Accumulator capture
+*/
+static int accumulatorcap (CapState *cs) {
+  lua_State *L = cs->L;
+  int n;
+  if (lua_gettop(L) < cs->firstcap)
+    luaL_error(L, "no previous value for accumulator capture");
+  pushluaval(cs);  /* push function */
+  lua_insert(L, -2);  /* previous value becomes first argument */
+  n = pushnestedvalues(cs, 0);  /* push nested captures */
+  lua_call(L, n + 1, 1);  /* call function */
+  return 0;  /* did not add any extra value */
+}
+
+
+/*
 ** Select capture
 */
 static int numcap (CapState *cs) {
@@ -422,13 +438,16 @@ static int addonestring (luaL_Buffer *b, CapState *cs, const char *what) {
     case Csubst:
       substcap(b, cs);  /* add capture directly to buffer */
       return 1;
+    case Cacc:  /* accumulator capture? */
+      return luaL_error(cs->L, "accumulator capture inside substitution capture");
     default: {
       lua_State *L = cs->L;
       int n = pushcapture(cs);
       if (n > 0) {
         if (n > 1) lua_pop(L, n - 1);  /* only one result */
         if (!lua_isstring(L, -1))
-          luaL_error(L, "invalid %s value (a %s)", what, luaL_typename(L, -1));
+          return luaL_error(L, "invalid %s value (a %s)",
+                               what, luaL_typename(L, -1));
         luaL_addvalue(b);
       }
       return n;
@@ -512,6 +531,7 @@ static int pushcapture (CapState *cs) {
     case Cbackref: res = backrefcap(cs); break;
     case Ctable: res = tablecap(cs); break;
     case Cfunction: res = functioncap(cs); break;
+    case Cacc: res = accumulatorcap(cs); break;
     case Cnum: res = numcap(cs); break;
     case Cquery: res = querycap(cs); break;
     case Cfold: res = foldcap(cs); break;
@@ -537,9 +557,11 @@ int getcaptures (lua_State *L, const char *s, const char *r, int ptop) {
     CapState cs;
     cs.ocap = cs.cap = capture; cs.L = L; cs.reclevel = 0;
     cs.s = s; cs.valuecached = 0; cs.ptop = ptop;
+    cs.firstcap = lua_gettop(L) + 1;  /* where first value (if any) will go */
     do {  /* collect their values */
       n += pushcapture(&cs);
     } while (!isclosecap(cs.cap));
+    assert(lua_gettop(L) - cs.firstcap == n - 1);
   }
   if (n == 0) {  /* no capture values? */
     lua_pushinteger(L, r - s + 1);  /* return only end position */
