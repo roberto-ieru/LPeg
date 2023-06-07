@@ -60,7 +60,7 @@ static void printTcharset (TTree *tree) {
 static const char *capkind (int kind) {
   const char *const modes[] = {
     "close", "position", "constant", "backref",
-    "argument", "simple", "table", "function", "replace",
+    "argument", "simple", "table", "function", "accumulator",
     "query", "string", "num", "substitution", "fold",
     "runtime", "group"};
   return modes[kind];
@@ -147,16 +147,29 @@ void printpatt (Instruction *p) {
 }
 
 
-static void printcap (Capture *cap) {
-  printf("%s (idx: %d - size: %d) -> %p\n",
-         capkind(cap->kind), cap->idx, cap->siz, cap->s);
+static void printcap (Capture *cap, int ident) {
+  while (ident--) printf(" ");
+  printf("%s (idx: %d - size: %d) -> %ld\n",
+         capkind(cap->kind), cap->idx, cap->siz, (long)cap->index);
 }
 
 
-void printcaplist (Capture *cap, Capture *limit) {
+static Capture *printcap2close (Capture *cap, int ident) {
+  while (cap->kind != Cclose) {
+    printcap(cap, ident);
+    if (cap->siz == 0) {
+      cap = printcap2close(cap + 1, ident + 2);
+      printcap(cap, ident);  /* print 'close' capture */
+    }
+    cap++;
+  }
+  return cap;
+}
+
+
+void printcaplist (Capture *cap) {
   printf(">======\n");
-  for (; cap->s && (limit == NULL || cap < limit); cap++)
-    printcap(cap);
+  printcap2close(cap, 0);
   printf("=======\n");
 }
 

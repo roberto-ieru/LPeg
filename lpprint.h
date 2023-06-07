@@ -13,7 +13,7 @@ void printpatt (Instruction *p);
 void printtree (TTree *tree, int ident);
 void printktable (lua_State *L, int idx);
 void printcharset (const byte *st);
-void printcaplist (Capture *cap, Capture *limit);
+void printcaplist (Capture *cap);
 void printinst (const Instruction *op, const Instruction *p);
 
 #else

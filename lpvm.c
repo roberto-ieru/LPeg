@@ -169,7 +169,7 @@ static int resdyncaptures (lua_State *L, int fr, int curr, int limit) {
 ** value, 'n' is the number of values (at least 1). The open group
 ** capture is already in 'capture', before the place for the new entries.
 */
-static void adddyncaptures (const char *s, Capture *capture, int n, int fd) {
+static void adddyncaptures (Index_t index, Capture *capture, int n, int fd) {
   int i;
   assert(capture[-1].kind == Cgroup && capture[-1].siz == 0);
   capture[-1].idx = 0;  /* make group capture an anonymous group */
@@ -177,11 +177,11 @@ static void adddyncaptures (const char *s, Capture *capture, int n, int fd) {
     capture[i].kind = Cruntime;
     capture[i].siz = 1;  /* mark it as closed */
     capture[i].idx = fd + i;  /* stack index of capture value */
-    capture[i].s = s;
+    capture[i].index = index;
   }
   capture[n].kind = Cclose;  /* close group */
   capture[n].siz = 1;
-  capture[n].s = s;
+  capture[n].index = index;
 }
 
 
@@ -225,7 +225,7 @@ const char *match (lua_State *L, const char *o, const char *s, const char *e,
       case IEnd: {
         assert(stack == getstackbase(L, ptop) + 1);
         capture[captop].kind = Cclose;
-        capture[captop].s = NULL;
+        capture[captop].index = MAXINDT;
         return s;
       }
       case IGiveup: {
@@ -383,7 +383,7 @@ const char *match (lua_State *L, const char *o, const char *s, const char *e,
             luaL_error(L, "too many results in match-time capture");
           /* add new captures + close group to 'capture' list */
           capture = growcap(L, capture, &capsize, captop, n + 1, ptop);
-          adddyncaptures(s, capture + captop, n, fr);
+          adddyncaptures(s - o, capture + captop, n, fr);
           captop += n + 1;  /* new captures + close group */
         }
         p++;
@@ -394,24 +394,24 @@ const char *match (lua_State *L, const char *o, const char *s, const char *e,
         assert(captop > 0);
         /* if possible, turn capture into a full capture */
         if (capture[captop - 1].siz == 0 &&
-            s1 - capture[captop - 1].s < UCHAR_MAX) {
-          capture[captop - 1].siz = s1 - capture[captop - 1].s + 1;
+            (s1 - o) - capture[captop - 1].index < UCHAR_MAX) {
+          capture[captop - 1].siz = (s1 - o) - capture[captop - 1].index + 1;
           p++;
           continue;
         }
         else {
           capture[captop].siz = 1;  /* mark entry as closed */
-          capture[captop].s = s;
+          capture[captop].index = s - o;
           goto pushcapture;
         }
       }
       case IOpenCapture:
         capture[captop].siz = 0;  /* mark entry as open */
-        capture[captop].s = s;
+        capture[captop].index = s - o;
         goto pushcapture;
       case IFullCapture:
         capture[captop].siz = getoff(p) + 1;  /* save capture size */
-        capture[captop].s = s - getoff(p);
+        capture[captop].index = s - o - getoff(p);
         /* goto pushcapture; */
       pushcapture: {
         capture[captop].idx = p->i.aux2.key;

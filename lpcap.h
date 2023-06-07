@@ -27,8 +27,20 @@ typedef enum CapKind {
 } CapKind;
 
 
+/*
+** An unsigned integer large enough to index any subject entirely.
+** It can be size_t, but that will double the size of the array
+** of captures in a 64-bit machine.
+*/
+#if !defined(Index_t)
+typedef uint Index_t;
+#endif
+
+#define MAXINDT		(~(Index_t)0)
+
+
 typedef struct Capture {
-  const char *s;  /* subject position */
+  Index_t index;  /* subject position */
   unsigned short idx;  /* extra info (group name, arg index, etc.) */
   byte kind;  /* kind of capture */
   byte siz;  /* size of full capture + 1 (0 = not a full capture) */

@@ -10,7 +10,7 @@
 
 #define isclosecap(cap)	(captype(cap) == Cclose)
 
-#define closeaddr(c)	((c)->s + (c)->siz - 1)
+#define closeaddr(cs,c)	((cs)->s + (c)->index + (c)->siz - 1)
 
 #define isfullcap(cap)	((cap)->siz != 0)
 
@@ -82,7 +82,8 @@ static void nextcap (CapState *cs) {
 static int pushnestedvalues (CapState *cs, int addextra) {
   Capture *co = cs->cap;
   if (isfullcap(cs->cap++)) {  /* no nested captures? */
-    lua_pushlstring(cs->L, co->s, co->siz - 1);  /* push whole match */
+    /* push whole match */
+    lua_pushlstring(cs->L, cs->s + co->index, co->siz - 1);
     return 1;  /* that is it */
   }
   else {
@@ -90,7 +91,8 @@ static int pushnestedvalues (CapState *cs, int addextra) {
     while (!isclosecap(cs->cap))  /* repeat for all nested patterns */
       n += pushcapture(cs);
     if (addextra || n == 0) {  /* need extra? */
-      lua_pushlstring(cs->L, co->s, cs->cap->s - co->s);  /* push whole match */
+      /* push whole match */
+      lua_pushlstring(cs->L, cs->s + co->index, cs->cap->index - co->index);
       n++;
     }
     cs->cap++;  /* skip close entry */
@@ -295,7 +297,7 @@ int runtimecap (CapState *cs, Capture *close, const char *s, int *rem) {
   assert(captype(open) == Cgroup);
   id = finddyncap(open, close);  /* get first dynamic capture argument */
   close->kind = Cclose;  /* closes the group */
-  close->s = s;
+  close->index = s - cs->s;
   cs->cap = open; cs->valuecached = 0;  /* prepare capture state */
   luaL_checkstack(L, 4, "too many runtime captures");
   pushluaval(cs);  /* push function to be called */
@@ -342,7 +344,7 @@ typedef struct StrAux {
 static int getstrcaps (CapState *cs, StrAux *cps, int n) {
   int k = n++;
   cps[k].isstring = 1;  /* get string value */
-  cps[k].u.s.s = cs->cap->s;  /* starts here */
+  cps[k].u.s.s = cs->s + cs->cap->index;  /* starts here */
   if (!isfullcap(cs->cap++)) {  /* nested captures? */
     while (!isclosecap(cs->cap)) {  /* traverse them */
       if (n >= MAXSTRCAPS)  /* too many captures? */
@@ -358,7 +360,7 @@ static int getstrcaps (CapState *cs, StrAux *cps, int n) {
     }
     cs->cap++;  /* skip close */
   }
-  cps[k].u.s.e = closeaddr(cs->cap - 1);  /* ends here */
+  cps[k].u.s.e = closeaddr(cs, cs->cap - 1);  /* ends here */
   return n;
 }
 
@@ -407,20 +409,21 @@ static void stringcap (luaL_Buffer *b, CapState *cs) {
 ** Substitution capture: add result to buffer 'b'
 */
 static void substcap (luaL_Buffer *b, CapState *cs) {
-  const char *curr = cs->cap->s;
+  const char *curr = cs->s + cs->cap->index;
   if (isfullcap(cs->cap))  /* no nested captures? */
     luaL_addlstring(b, curr, cs->cap->siz - 1);  /* keep original text */
   else {
     cs->cap++;  /* skip open entry */
     while (!isclosecap(cs->cap)) {  /* traverse nested captures */
-      const char *next = cs->cap->s;
+      const char *next = cs->s + cs->cap->index;
       luaL_addlstring(b, curr, next - curr);  /* add text up to capture */
       if (addonestring(b, cs, "replacement"))
-        curr = closeaddr(cs->cap - 1);  /* continue after match */
+        curr = closeaddr(cs, cs->cap - 1);  /* continue after match */
       else  /* no capture value */
         curr = next;  /* keep original text in final result */
     }
-    luaL_addlstring(b, curr, cs->cap->s - curr);  /* add last piece of text */
+    /* add last piece of text */
+    luaL_addlstring(b, curr, cs->s + cs->cap->index - curr);
   }
   cs->cap++;  /* go to next capture */
 }
@@ -473,7 +476,7 @@ static int pushcapture (CapState *cs) {
     return luaL_error(L, "subcapture nesting too deep");
   switch (captype(cs->cap)) {
     case Cposition: {
-      lua_pushinteger(L, cs->cap->s - cs->s + 1);
+      lua_pushinteger(L, cs->cap->index + 1);
       cs->cap++;
       res = 1;
       break;
@@ -553,6 +556,7 @@ static int pushcapture (CapState *cs) {
 int getcaptures (lua_State *L, const char *s, const char *r, int ptop) {
   Capture *capture = (Capture *)lua_touserdata(L, caplistidx(ptop));
   int n = 0;
+  /* printcaplist(capture); */
   if (!isclosecap(capture)) {  /* is there any capture? */
     CapState cs;
     cs.ocap = cs.cap = capture; cs.L = L; cs.reclevel = 0;
