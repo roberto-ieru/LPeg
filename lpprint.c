@@ -149,27 +149,35 @@ void printpatt (Instruction *p) {
 
 static void printcap (Capture *cap, int ident) {
   while (ident--) printf(" ");
-  printf("%s (idx: %d - size: %d) -> %ld\n",
+  printf("%s (idx: %d - size: %d) -> %lu\n",
          capkind(cap->kind), cap->idx, cap->siz, (long)cap->index);
 }
 
 
+/*
+** Print a capture and its nested captures
+*/
 static Capture *printcap2close (Capture *cap, int ident) {
-  while (cap->kind != Cclose) {
-    printcap(cap, ident);
-    if (cap->siz == 0) {
-      cap = printcap2close(cap + 1, ident + 2);
-      printcap(cap, ident);  /* print 'close' capture */
-    }
-    cap++;
+  Capture *head = cap++;
+  printcap(head, ident);  /* print head capture */
+  while (capinside(head, cap))
+    cap = printcap2close(cap, ident + 2);  /* print nested captures */
+  if (isopencap(head)) {
+    assert(isclosecap(cap));
+    printcap(cap++, ident);  /* print and skip close capture */
   }
   return cap;
 }
 
 
 void printcaplist (Capture *cap) {
+  {  /* for debugging, print first a raw list of captures */
+    Capture *c = cap;
+    while (c->index != MAXINDT) { printcap(c, 0); c++; }
+  }
   printf(">======\n");
-  printcap2close(cap, 0);
+  while (!isclosecap(cap))
+    cap = printcap2close(cap, 0);
   printf("=======\n");
 }
 

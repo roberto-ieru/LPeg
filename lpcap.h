@@ -59,6 +59,18 @@ typedef struct CapState {
 } CapState;
 
 
+#define captype(cap)    ((cap)->kind)
+
+#define isclosecap(cap) (captype(cap) == Cclose)
+#define isopencap(cap)  ((cap)->siz == 0)
+
+/* true if c2 is (any number of levels) inside c1 */
+#define capinside(c1,c2)  \
+	(isopencap(c1) ? !isclosecap(c2) \
+                       : (c2)->index < (c1)->index + (c1)->siz - 1)
+
+
+
 int runtimecap (CapState *cs, Capture *close, const char *s, int *rem);
 int getcaptures (lua_State *L, const char *s, const char *r, int ptop);
 int finddyncap (Capture *cap, Capture *last);

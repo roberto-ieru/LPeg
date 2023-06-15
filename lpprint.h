@@ -22,7 +22,7 @@ void printinst (const Instruction *op, const Instruction *p);
 	luaL_error(L, "function only implemented in debug mode")
 #define printtree(tree,i)  \
 	luaL_error(L, "function only implemented in debug mode")
-#define printpatt(p,n)  \
+#define printpatt(p)  \
 	luaL_error(L, "function only implemented in debug mode")
 
 #endif

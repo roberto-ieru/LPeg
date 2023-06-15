@@ -3,21 +3,37 @@
 #include "lauxlib.h"
 
 #include "lpcap.h"
+#include "lpprint.h"
 #include "lptypes.h"
 
-
-#define captype(cap)	((cap)->kind)
-
-#define isclosecap(cap)	(captype(cap) == Cclose)
-
-#define closeaddr(cs,c)	((cs)->s + (c)->index + (c)->siz - 1)
-
-#define isfullcap(cap)	((cap)->siz != 0)
 
 #define getfromktable(cs,v)	lua_rawgeti((cs)->L, ktableidx((cs)->ptop), v)
 
 #define pushluaval(cs)		getfromktable(cs, (cs)->cap->idx)
 
+
+
+#define skipclose(cs,head)  \
+	if (isopencap(head)) { assert(isclosecap(cs->cap)); cs->cap++; }
+
+
+/*
+** Return the size of capture 'cap'. If it is an open capture, 'close'
+** must be its corresponding close.
+*/
+static Index_t capsize (Capture *cap, Capture *close) {
+  if (isopencap(cap)) {
+    assert(isclosecap(close));
+    return close->index - cap->index;
+  }
+  else
+    return cap->siz - 1;
+}
+
+
+static Index_t closesize (CapState *cs, Capture *head) {
+  return capsize(head, cs->cap);
+}
 
 
 /*
@@ -40,35 +56,40 @@ static int pushcapture (CapState *cs);
 
 /*
 ** Goes back in a list of captures looking for an open capture
-** corresponding to a close
+** corresponding to a close one.
 */
 static Capture *findopen (Capture *cap) {
   int n = 0;  /* number of closes waiting an open */
   for (;;) {
     cap--;
     if (isclosecap(cap)) n++;  /* one more open to skip */
-    else if (!isfullcap(cap))
+    else if (isopencap(cap))
       if (n-- == 0) return cap;
   }
 }
 
 
 /*
-** Go to the next capture
+** Go to the next capture at the same level.
 */
 static void nextcap (CapState *cs) {
   Capture *cap = cs->cap;
-  if (!isfullcap(cap)) {  /* not a single capture? */
+  if (isopencap(cap)) {  /* must look for a close? */
     int n = 0;  /* number of opens waiting a close */
     for (;;) {  /* look for corresponding close */
       cap++;
-      if (isclosecap(cap)) {
+      if (isopencap(cap)) n++;
+      else if (isclosecap(cap))
         if (n-- == 0) break;
-      }
-      else if (!isfullcap(cap)) n++;
     }
+    cs->cap = cap + 1;  /* + 1 to skip last close */
   }
-  cs->cap = cap + 1;  /* + 1 to skip last close (or entire single capture) */
+  else {
+    Capture *next;
+    for (next = cap + 1; capinside(cap, next); next++)
+      ;  /* skip captures inside current one */
+    cs->cap = next;
+  }
 }
 
 
@@ -80,24 +101,17 @@ static void nextcap (CapState *cs) {
 ** so the function never returns zero.
 */
 static int pushnestedvalues (CapState *cs, int addextra) {
-  Capture *co = cs->cap;
-  if (isfullcap(cs->cap++)) {  /* no nested captures? */
-    /* push whole match */
-    lua_pushlstring(cs->L, cs->s + co->index, co->siz - 1);
-    return 1;  /* that is it */
+  Capture *head = cs->cap++;  /* original capture */
+  int n = 0;  /* number of pushed subvalues */
+  /* repeat for all nested patterns */
+  while (capinside(head, cs->cap))
+    n += pushcapture(cs);
+  if (addextra || n == 0) {  /* need extra? */
+    lua_pushlstring(cs->L, cs->s + head->index, closesize(cs, head));
+    n++;
   }
-  else {
-    int n = 0;
-    while (!isclosecap(cs->cap))  /* repeat for all nested patterns */
-      n += pushcapture(cs);
-    if (addextra || n == 0) {  /* need extra? */
-      /* push whole match */
-      lua_pushlstring(cs->L, cs->s + co->index, cs->cap->index - co->index);
-      n++;
-    }
-    cs->cap++;  /* skip close entry */
-    return n;
-  }
+  skipclose(cs, head);
+  return n;
 }
 
 
@@ -112,17 +126,35 @@ static void pushonenestedvalue (CapState *cs) {
 
 
 /*
-** Try to find a named group capture with the name given at the top of
-** the stack; goes backward from 'cap'.
+** Checks whether group 'grp' is visible to 'ref', that is,
+** 'grp' is not nested inside a capture that does not contain 'ref'.
+** To do that, must find minimum capture that contains 'grp'.
 */
-static Capture *findback (CapState *cs, Capture *cap) {
-  lua_State *L = cs->L;
+static int capvisible (CapState *cs, Capture *grp, Capture *ref) {
+  Capture *cap = grp;
   while (cap-- > cs->ocap) {  /* repeat until end of list */
     if (isclosecap(cap))
       cap = findopen(cap);  /* skip nested captures */
-    else if (!isfullcap(cap))
-      continue; /* opening an enclosing capture: skip and get previous */
-    if (captype(cap) == Cgroup) {
+    else if (capinside(cap, grp))  /* is 'grp' inside cap? */
+      return capinside(cap, ref);  /* ok iff cap also contains 'ref' */
+  }
+  return 1;  /* 'grp' is not inside any capture */
+}
+
+
+/*
+** Try to find a named group capture with the name given at the top of
+** the stack; goes backward from 'ref'.
+*/
+static Capture *findback (CapState *cs, Capture *ref) {
+  lua_State *L = cs->L;
+  Capture *cap = ref;
+  while (cap-- > cs->ocap) {  /* repeat until end of list */
+    if (isopencap(cap))
+      continue;  /* enclosing captures are not visible to 'ref' */
+    else if (isclosecap(cap))
+      cap = findopen(cap);  /* skip nested captures */
+    if (captype(cap) == Cgroup && capvisible(cs, cap, ref)) {
       getfromktable(cs, cap->idx);  /* get group name */
       if (lp_equal(L, -2, -1)) {  /* right group? */
         lua_pop(L, 2);  /* remove reference name and group name */
@@ -156,11 +188,10 @@ static int backrefcap (CapState *cs) {
 */
 static int tablecap (CapState *cs) {
   lua_State *L = cs->L;
+  Capture *head = cs->cap++;
   int n = 0;
   lua_newtable(L);
-  if (isfullcap(cs->cap++))
-    return 1;  /* table is empty */
-  while (!isclosecap(cs->cap)) {
+  while (capinside(head, cs->cap)) {
     if (captype(cs->cap) == Cgroup && cs->cap->idx != 0) {  /* named group? */
       pushluaval(cs);  /* push group name */
       pushonenestedvalue(cs);
@@ -174,7 +205,7 @@ static int tablecap (CapState *cs) {
       n += k;
     }
   }
-  cs->cap++;  /* skip close entry */
+  skipclose(cs, head);
   return 1;  /* number of values pushed (only the table) */
 }
 
@@ -201,20 +232,20 @@ static int querycap (CapState *cs) {
 static int foldcap (CapState *cs) {
   int n;
   lua_State *L = cs->L;
-  int idx = cs->cap->idx;
-  if (isfullcap(cs->cap++) ||  /* no nested captures? */
-      isclosecap(cs->cap) ||  /* no nested captures (large subject)? */
+  Capture *head = cs->cap++;
+  int idx = head->idx;
+  if (isclosecap(cs->cap) ||  /* no nested captures (large subject)? */
       (n = pushcapture(cs)) == 0)  /* nested captures with no values? */
     return luaL_error(L, "no initial value for fold capture");
   if (n > 1)
     lua_pop(L, n - 1);  /* leave only one result for accumulator */
-  while (!isclosecap(cs->cap)) {
+  while (capinside(head, cs->cap)) {
     lua_pushvalue(L, updatecache(cs, idx));  /* get folding function */
     lua_insert(L, -2);  /* put it before accumulator */
     n = pushcapture(cs);  /* get next capture's values */
     lua_call(L, n + 1, 1);  /* call folding function */
   }
-  cs->cap++;  /* skip close entry */
+  skipclose(cs, head);
   return 1;  /* only accumulator left on the stack */
 }
 
@@ -327,8 +358,8 @@ typedef struct StrAux {
   union {
     Capture *cp;  /* if not a string, respective capture */
     struct {  /* if it is a string... */
-      const char *s;  /* ... starts here */
-      const char *e;  /* ... ends here */
+      Index_t idx;  /* starts here */
+      Index_t siz;  /* with this size */
     } s;
   } u;
 } StrAux;
@@ -343,24 +374,23 @@ typedef struct StrAux {
 */
 static int getstrcaps (CapState *cs, StrAux *cps, int n) {
   int k = n++;
+  Capture *head = cs->cap++;
   cps[k].isstring = 1;  /* get string value */
-  cps[k].u.s.s = cs->s + cs->cap->index;  /* starts here */
-  if (!isfullcap(cs->cap++)) {  /* nested captures? */
-    while (!isclosecap(cs->cap)) {  /* traverse them */
-      if (n >= MAXSTRCAPS)  /* too many captures? */
-        nextcap(cs);  /* skip extra captures (will not need them) */
-      else if (captype(cs->cap) == Csimple)  /* string? */
-        n = getstrcaps(cs, cps, n);  /* put info. into array */
-      else {
-        cps[n].isstring = 0;  /* not a string */
-        cps[n].u.cp = cs->cap;  /* keep original capture */
-        nextcap(cs);
-        n++;
-      }
+  cps[k].u.s.idx = head->index;  /* starts here */
+  while (capinside(head, cs->cap)) {
+    if (n >= MAXSTRCAPS)  /* too many captures? */
+      nextcap(cs);  /* skip extra captures (will not need them) */
+    else if (captype(cs->cap) == Csimple)  /* string? */
+      n = getstrcaps(cs, cps, n);  /* put info. into array */
+    else {
+      cps[n].isstring = 0;  /* not a string */
+      cps[n].u.cp = cs->cap;  /* keep original capture */
+      nextcap(cs);
+      n++;
     }
-    cs->cap++;  /* skip close */
   }
-  cps[k].u.s.e = closeaddr(cs, cs->cap - 1);  /* ends here */
+  cps[k].u.s.siz = closesize(cs, head);
+  skipclose(cs, head);
   return n;
 }
 
@@ -382,7 +412,7 @@ static void stringcap (luaL_Buffer *b, CapState *cs) {
   const char *fmt;  /* format string */
   fmt = lua_tolstring(cs->L, updatecache(cs, cs->cap->idx), &len);
   n = getstrcaps(cs, cps, 0) - 1;  /* collect nested captures */
-  for (i = 0; i < len; i++) {  /* traverse them */
+  for (i = 0; i < len; i++) {  /* traverse format string */
     if (fmt[i] != '%')  /* not an escape? */
       luaL_addchar(b, fmt[i]);  /* add it to buffer */
     else if (fmt[++i] < '0' || fmt[i] > '9')  /* not followed by a digit? */
@@ -392,7 +422,7 @@ static void stringcap (luaL_Buffer *b, CapState *cs) {
       if (l > n)
         luaL_error(cs->L, "invalid capture index (%d)", l);
       else if (cps[l].isstring)
-        luaL_addlstring(b, cps[l].u.s.s, cps[l].u.s.e - cps[l].u.s.s);
+        luaL_addlstring(b, cs->s + cps[l].u.s.idx, cps[l].u.s.siz);
       else {
         Capture *curr = cs->cap;
         cs->cap = cps[l].u.cp;  /* go back to evaluate that nested capture */
@@ -410,22 +440,19 @@ static void stringcap (luaL_Buffer *b, CapState *cs) {
 */
 static void substcap (luaL_Buffer *b, CapState *cs) {
   const char *curr = cs->s + cs->cap->index;
-  if (isfullcap(cs->cap))  /* no nested captures? */
-    luaL_addlstring(b, curr, cs->cap->siz - 1);  /* keep original text */
-  else {
-    cs->cap++;  /* skip open entry */
-    while (!isclosecap(cs->cap)) {  /* traverse nested captures */
-      const char *next = cs->s + cs->cap->index;
-      luaL_addlstring(b, curr, next - curr);  /* add text up to capture */
-      if (addonestring(b, cs, "replacement"))
-        curr = closeaddr(cs, cs->cap - 1);  /* continue after match */
-      else  /* no capture value */
-        curr = next;  /* keep original text in final result */
-    }
-    /* add last piece of text */
-    luaL_addlstring(b, curr, cs->s + cs->cap->index - curr);
+  Capture *head = cs->cap++;
+  while (capinside(head, cs->cap)) {
+    Capture *cap = cs->cap;
+    const char *caps = cs->s + cap->index;
+    luaL_addlstring(b, curr, caps - curr);  /* add text up to capture */
+    if (addonestring(b, cs, "replacement"))
+      curr = caps + capsize(cap, cs->cap - 1);  /* continue after match */
+    else  /* no capture value */
+      curr = caps;  /* keep original text in final result */
   }
-  cs->cap++;  /* go to next capture */
+  /* add last piece of text */
+  luaL_addlstring(b, curr, cs->s + head->index + closesize(cs, head) - curr);
+  skipclose(cs, head);
 }
 
 
@@ -548,7 +575,7 @@ static int pushcapture (CapState *cs) {
 /*
 ** Prepare a CapState structure and traverse the entire list of
 ** captures in the stack pushing its results. 's' is the subject
-** string, 'r' is the final position of the match, and 'ptop' 
+** string, 'r' is the final position of the match, and 'ptop'
 ** the index in the stack where some useful values were pushed.
 ** Returns the number of results pushed. (If the list produces no
 ** results, push the final position of the match.)

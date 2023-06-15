@@ -198,6 +198,37 @@ static int removedyncap (lua_State *L, Capture *capture,
 }
 
 
+/**
+** Maximum number of captures to visit when looking for an 'open'.
+*/
+#define MAXLOP		20
+
+/*
+** Find the corresponding 'open' capture before 'cap', when that capture
+** can become a full capture. If a full capture c1 is followed by an
+** empty capture c2, there is no way to know whether c2 is inside
+** c1. So, full captures can enclose only captures that start *before*
+** its end.
+*/
+static Capture *findopen (Capture *cap, Index_t currindex) {
+  int i;
+  cap--;  /* check last capture */
+  /* Must it be inside current one, but starts where current one ends? */
+  if (!isopencap(cap) && cap->index == currindex)
+    return NULL;  /* current one cannot be a full capture */
+  /* else, look for an 'open' capture */
+  for (i = 0; i < MAXLOP; i++, cap--) {
+    if (currindex - cap->index >= UCHAR_MAX)
+      return NULL;  /* capture too long for a full capture */
+    else if (isopencap(cap))  /* open capture? */
+      return cap;  /* that's the one to be closed */
+    else if (cap->kind == Cclose)
+      return NULL;  /* a full capture should not nest a non-full one */
+  }
+  return NULL;  /* not found within allowed search limit */
+}
+
+
 /*
 ** Opcode interpreter
 */
@@ -390,16 +421,14 @@ const char *match (lua_State *L, const char *o, const char *s, const char *e,
         continue;
       }
       case ICloseCapture: {
-        const char *s1 = s;
+        Capture *open = findopen(capture + captop, s - o);
         assert(captop > 0);
-        /* if possible, turn capture into a full capture */
-        if (capture[captop - 1].siz == 0 &&
-            (s1 - o) - capture[captop - 1].index < UCHAR_MAX) {
-          capture[captop - 1].siz = (s1 - o) - capture[captop - 1].index + 1;
+        if (open) {  /* if possible, turn capture into a full capture */
+          open->siz = (s - o) - open->index + 1;
           p++;
           continue;
         }
-        else {
+        else {  /* must create a close capture */
           capture[captop].siz = 1;  /* mark entry as closed */
           capture[captop].index = s - o;
           goto pushcapture;
