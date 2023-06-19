@@ -184,8 +184,8 @@ local exp = m.P{ "Exp",
                          + m.P"{}" * m.Cc(nil, m.Ct)
                          + defwithfunc(mt.__div)
                          )
-            + "=>" * S * defwithfunc(m.Cmt)
-            + "~>" * S * defwithfunc(m.Cf)
+            + "=>" * S * defwithfunc(mm.Cmt)
+            + "~>" * S * defwithfunc(mm.Cf)
             ) * S
           )^0, function (a,b,f) return f(a,b) end );
   Primary = "(" * m.V"Exp" * ")"
