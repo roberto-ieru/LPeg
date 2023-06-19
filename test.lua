@@ -1005,6 +1005,35 @@ p = m.Cg(m.C(1) * m.C(1), "k") * m.Ct(m.Cb("k"))
 t = p:match("ab")
 checkeq(t, {"a", "b"})
 
+
+do
+  -- some basic cases
+  assert(m.match(m.Cg(m.Cc(3), "a") * m.Cb("a"), "a") == 3)
+  assert(m.match(m.Cg(m.C(1), 133) * m.Cb(133), "X") == "X")
+
+  -- first reference to 'x' should not see the group enclosing it
+  local p = m.Cg(m.Cb('x'), 'x') * m.Cb('x')
+  checkerr("back reference 'x' not found", m.match, p, '')
+
+  local p = m.Cg(m.Cb('x') * m.C(1), 'x') * m.Cb('x')
+  checkerr("back reference 'x' not found", m.match, p, 'abc')
+
+  -- reference to 'x' should not see the group enclosed in another capture
+  local s = string.rep("a", 30)
+  local p = (m.C(1)^-4 * m.Cg(m.C(1), 'x')) / {} * m.Cb('x')
+  checkerr("back reference 'x' not found", m.match, p, s)
+
+  local p = (m.C(1)^-20 * m.Cg(m.C(1), 'x')) / {} * m.Cb('x')
+  checkerr("back reference 'x' not found", m.match, p, s)
+
+  -- second reference 'k' should refer to 10 and first ref. 'k'
+  p = m.Cg(m.Cc(20), 'k') * m.Cg(m.Cc(10) * m.Cb('k') * m.C(1), 'k')
+      * (m.Cb('k') / function (a,b,c) return a*10 + b + tonumber(c) end)
+  -- 10 * 10 (Cc) + 20 (Cb) + 7 (C) == 127
+  assert(p:match("756") == 127)
+
+end
+
 p = m.P(true)
 for i = 1, 10 do p = p * m.Cg(1, i) end
 for i = 1, 10 do

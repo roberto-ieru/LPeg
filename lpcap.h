@@ -70,6 +70,12 @@ typedef struct CapState {
                        : (c2)->index < (c1)->index + (c1)->siz - 1)
 
 
+/**
+** Maximum number of captures to visit when looking for an 'open'.
+*/
+#define MAXLOP		20
+
+
 
 int runtimecap (CapState *cs, Capture *close, const char *s, int *rem);
 int getcaptures (lua_State *L, const char *s, const char *r, int ptop);

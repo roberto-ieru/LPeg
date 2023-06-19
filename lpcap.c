@@ -126,15 +126,23 @@ static void pushonenestedvalue (CapState *cs) {
 
 
 /*
-** Checks whether group 'grp' is visible to 'ref', that is,
-** 'grp' is not nested inside a capture that does not contain 'ref'.
-** To do that, must find minimum capture that contains 'grp'.
+** Checks whether group 'grp' is visible to 'ref', that is, 'grp' is
+** not nested inside a full capture that does not contain 'ref'.  (We
+** only need to care for full captures because the search at 'findback'
+** skips open-end blocks; so, if 'grp' is nested in a non-full capture,
+** 'ref' is also inside it.)  To check this, we search backward for the
+** inner full capture enclosing 'grp'.  A full capture cannot contain
+** non-full captures, so a close capture means we cannot be inside a
+** full capture anymore.
 */
 static int capvisible (CapState *cs, Capture *grp, Capture *ref) {
   Capture *cap = grp;
-  while (cap-- > cs->ocap) {  /* repeat until end of list */
+  int i = MAXLOP;  /* maximum distance for an 'open' */
+  while (i-- > 0 && cap-- > cs->ocap) {
     if (isclosecap(cap))
-      cap = findopen(cap);  /* skip nested captures */
+      return 1;  /* can stop the search */
+    else if (grp->index - cap->index >= UCHAR_MAX)
+      return 1;  /* can stop the search */
     else if (capinside(cap, grp))  /* is 'grp' inside cap? */
       return capinside(cap, ref);  /* ok iff cap also contains 'ref' */
   }
@@ -150,10 +158,10 @@ static Capture *findback (CapState *cs, Capture *ref) {
   lua_State *L = cs->L;
   Capture *cap = ref;
   while (cap-- > cs->ocap) {  /* repeat until end of list */
-    if (isopencap(cap))
-      continue;  /* enclosing captures are not visible to 'ref' */
-    else if (isclosecap(cap))
+    if (isclosecap(cap))
       cap = findopen(cap);  /* skip nested captures */
+    else if (capinside(cap, ref))
+      continue;  /* enclosing captures are not visible to 'ref' */
     if (captype(cap) == Cgroup && capvisible(cs, cap, ref)) {
       getfromktable(cs, cap->idx);  /* get group name */
       if (lp_equal(L, -2, -1)) {  /* right group? */

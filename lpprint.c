@@ -149,8 +149,8 @@ void printpatt (Instruction *p) {
 
 static void printcap (Capture *cap, int ident) {
   while (ident--) printf(" ");
-  printf("%s (idx: %d - size: %d) -> %lu\n",
-         capkind(cap->kind), cap->idx, cap->siz, (long)cap->index);
+  printf("%s (idx: %d - size: %d) -> %lu  (%p)\n",
+         capkind(cap->kind), cap->idx, cap->siz, (long)cap->index, (void*)cap);
 }
 
 

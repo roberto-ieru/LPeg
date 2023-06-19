@@ -608,17 +608,17 @@ The following table summarizes the basic captures:
 <tr><td><a href="#cap-arg"><code>lpeg.Carg(n)</code></a></td>
     <td>the value of the n<sup>th</sup> extra argument to
         <code>lpeg.match</code> (matches the empty string)</td></tr>
-<tr><td><a href="#cap-b"><code>lpeg.Cb(name)</code></a></td>
+<tr><td><a href="#cap-b"><code>lpeg.Cb(key)</code></a></td>
     <td>the values produced by the previous
-        group capture named <code>name</code>
+        group capture named <code>key</code>
         (matches the empty string)</td></tr>
 <tr><td><a href="#cap-cc"><code>lpeg.Cc(values)</code></a></td>
     <td>the given values (matches the empty string)</td></tr>
 <tr><td><a href="#cap-f"><code>lpeg.Cf(patt, func)</code></a></td>
   <td>a <em>folding</em> of the captures from <code>patt</code></td></tr>
-<tr><td><a href="#cap-g"><code>lpeg.Cg(patt [, name])</code></a></td>
+<tr><td><a href="#cap-g"><code>lpeg.Cg(patt [, key])</code></a></td>
     <td>the values produced by <code>patt</code>,
-        optionally tagged with <code>name</code></td></tr>
+        optionally tagged with <code>key</code></td></tr>
 <tr><td><a href="#cap-p"><code>lpeg.Cp()</code></a></td>
     <td>the current position (matches the empty string)</td></tr>
 <tr><td><a href="#cap-s"><code>lpeg.Cs(patt)</code></a></td>
@@ -639,9 +639,10 @@ or no value when <code>number</code> is zero.</td></tr>
   <td>the returns of <code>function</code> applied to the captures
       of <code>patt</code></td></tr>
 <tr><td><a href="#cap-rep"><code>patt % function</code></a></td>
-  <td>the return of <code>function</code> applied to the previous
-      capture plus the captures of <code>patt</code></td></tr>;
-      the returned value becomes the value of the previous capture
+  <td>produces no value;
+      it <em>accummulates</em> the captures from <code>patt</code>
+      into the previous capture through <code>function</code>
+      </td></tr>
 <tr><td><a href="#matchtime"><code>lpeg.Cmt(patt, function)</code></a></td>
   <td>the returns of <code>function</code> applied to the captures
       of <code>patt</code>; the application is done at match time</td></tr>
@@ -699,24 +700,25 @@ argument given in the call to <code>lpeg.match</code>.
 </p>
 
 
-<h3><a name="cap-b"></a><code>lpeg.Cb (name)</code></h3>
+<h3><a name="cap-b"></a><code>lpeg.Cb (key)</code></h3>
 <p>
 Creates a <em>back capture</em>.
 This pattern matches the empty string and
 produces the values produced by the <em>most recent</em>
-<a href="#cap-g">group capture</a> named <code>name</code>
-(where <code>name</code> can be any Lua value).
+<a href="#cap-g">group capture</a> named <code>key</code>
+(where <code>key</code> can be any Lua value).
 </p>
 
 <p>
 <em>Most recent</em> means the last
 <em>complete</em>
 <em>outermost</em>
-group capture with the given name.
+group capture with the given key.
 A <em>Complete</em> capture means that the entire pattern
-corresponding to the capture has matched.
+corresponding to the capture has matched;
+in other words, the back capture is not nested inside the group.
 An <em>Outermost</em> capture means that the capture is not inside
-another complete capture.
+another complete capture that does not contain the back capture itself.
 </p>
 
 <p>
@@ -785,13 +787,13 @@ print(sum:match("10,30,43"))   --&gt; 83
 </pre>
 
 
-<h3><a name="cap-g"></a><code>lpeg.Cg (patt [, name])</code></h3>
+<h3><a name="cap-g"></a><code>lpeg.Cg (patt [, key])</code></h3>
 <p>
 Creates a <em>group capture</em>.
 It groups all values returned by <code>patt</code>
 into a single capture.
-The group may be anonymous (if no name is given)
-or named with the given name
+The group may be anonymous (if no key is given)
+or named with the given key
 (which can be any non-nil Lua value).
 </p>
 
@@ -837,7 +839,7 @@ starting at 1.
 Moreover,
 for each named capture group created by <code>patt</code>,
 the first value of the group is put into the table
-with the group name as its key.
+with the group key as its key.
 The captured value is only the table.
 </p>
 
@@ -897,12 +899,14 @@ there is no captured value.
 <p>
 Creates an <em>accumulator capture</em>.
 This pattern behaves similarly to a
-<a href="cap-func">function capture</a>,
+<a href="#cap-func">function capture</a>,
 with the following differences:
 The last captured value is added as a first argument to
 the call;
 the return of the function is adjusted to one single value;
-that value becomes the last captured value.
+that value replaces the last captured value.
+Note that the capture itself produces no values;
+it only changes the value of its previous capture.
 </p>
 
 <p>
@@ -929,6 +933,12 @@ changed to upper case;
 that value then becomes the first and only
 capture value created by the match.
 </p>
+
+<p>
+As another example,
+let us consider the problem of adding a list of numbers.
+</p>
+<pre class="example">
 -- matches a numeral and captures its numerical value
 number = lpeg.R"09"^1 / tonumber
 
@@ -944,11 +954,11 @@ print(sum:match("10,30,43"))   --&gt; 83
 <p>
 First, the initial <code>number</code> captures a number;
 that first capture will play the role of an accumulator.
-Then, each time <code>number</code> matches inside the loop
-there is a accumulator capture:
+Then, each time the sequence <code>comma-number</code>
+matches inside the loop there is an accumulator capture:
 It calls <code>add</code> with the current value of the accumulator
 and the value of the new number,
-and their sum replaces the value of the accumulator.
+and the result of the call (their sum) replaces the value of the accumulator.
 At the end of the match,
 the accumulator with all sums is the final value.
 </p>
@@ -956,9 +966,12 @@ the accumulator with all sums is the final value.
 <p>
 Due to the nature of this capture,
 you should avoid using it in places where it is not clear
-what is its "previous" capture.
+what is its "previous" capture
+(e.g., directly nested in a <a href="#cap-string">string capture</a>
+or a <a href="#cap-num">numbered capture</a>).
 Due to implementation details,
-you should not use this capture inside a substitution capture.
+you should not use this capture directly nested in a
+<a href="#cap-s">substitution capture</a>.
 </p>
 
 
@@ -1014,9 +1027,9 @@ local lpeg = require "lpeg"
 -- matches a word followed by end-of-string
 p = lpeg.R"az"^1 * -1
 
-print(p:match("hello"))        --> 6
-print(lpeg.match(p, "hello"))  --> 6
-print(p:match("1 hello"))      --> nil
+print(p:match("hello"))        --&gt; 6
+print(lpeg.match(p, "hello"))  --&gt; 6
+print(p:match("1 hello"))      --&gt; nil
 </pre>
 <p>
 The pattern is simply a sequence of one or more lower-case letters
@@ -1043,7 +1056,7 @@ local name = lpeg.C(lpeg.alpha^1) * space
 local sep = lpeg.S(",;") * space
 local pair = name * "=" * space * name * sep^-1
 local list = lpeg.Ct("") * (pair % rawset)^0
-t = list:match("a=b, c = hi; next = pi")  --> { a = "b", c = "hi", next = "pi" }
+t = list:match("a=b, c = hi; next = pi")  --&gt; { a = "b", c = "hi", next = "pi" }
 </pre>
 <p>
 Each pair has the format <code>name = name</code> followed by
@@ -1135,7 +1148,7 @@ function anywhere (p)
   return lpeg.P{ I * p * I + 1 * lpeg.V(1) }
 end
 
-print(anywhere("world"):match("hello world!"))   -> 7   12
+print(anywhere("world"):match("hello world!"))   --&gt; 7   12
 </pre>
 
 <p>
@@ -1344,7 +1357,7 @@ function evalExp (s)
 end
 
 -- small example
-print(evalExp"3 + 5*9 / (1+1) - 12")   --> 13.5
+print(evalExp"3 + 5*9 / (1+1) - 12")   --&gt; 13.5
 </pre>
 
 <p>
@@ -1372,7 +1385,7 @@ G = lpeg.P{ "Exp",
 }
 
 -- small example
-print(lpeg.match(G, "3 + 5*9 / (1+1) - 12"))   --> 13.5
+print(lpeg.match(G, "3 + 5*9 / (1+1) - 12"))   --&gt; 13.5
 </pre>
 <p>
 Note the use of the accumulator capture.

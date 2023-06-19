@@ -198,11 +198,6 @@ static int removedyncap (lua_State *L, Capture *capture,
 }
 
 
-/**
-** Maximum number of captures to visit when looking for an 'open'.
-*/
-#define MAXLOP		20
-
 /*
 ** Find the corresponding 'open' capture before 'cap', when that capture
 ** can become a full capture. If a full capture c1 is followed by an
