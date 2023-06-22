@@ -901,8 +901,8 @@ Creates an <em>accumulator capture</em>.
 This pattern behaves similarly to a
 <a href="#cap-func">function capture</a>,
 with the following differences:
-The last captured value is added as a first argument to
-the call;
+The last captured value before <code>patt</code>
+is added as a first argument to the call;
 the return of the function is adjusted to one single value;
 that value replaces the last captured value.
 Note that the capture itself produces no values;
@@ -911,31 +911,6 @@ it only changes the value of its previous capture.
 
 <p>
 As an example,
-consider the following code fragment:
-</p>
-<pre class="example">
-local name = lpeg.C(lpeg.R("az")^1)
-local p = name * (lpeg.P("^") % string.upper)^-1
-print(p:match("count"))    --&gt; count
-print(p:match("count^"))   --&gt; COUNT
-</pre>
-<p>
-In the first match,
-the accumulator capture does not match,
-and so the match results in its first capture, a name.
-In the second match,
-the accumulator capture matches,
-so the function <code>string.upper</code>
-is called with the previous capture (created by <code>name</code>)
-plus the string <code>"^"</code>;
-the function ignores its second argument and returns the first argument
-changed to upper case;
-that value then becomes the first and only
-capture value created by the match.
-</p>
-
-<p>
-As another example,
 let us consider the problem of adding a list of numbers.
 </p>
 <pre class="example">
@@ -956,22 +931,56 @@ First, the initial <code>number</code> captures a number;
 that first capture will play the role of an accumulator.
 Then, each time the sequence <code>comma-number</code>
 matches inside the loop there is an accumulator capture:
-It calls <code>add</code> with the current value of the accumulator
-and the value of the new number,
-and the result of the call (their sum) replaces the value of the accumulator.
+It calls <code>add</code> with the current value of the
+accumulator&mdash;which is the last captured value, created by the
+first <code>number</code>&mdash; and the value of the new number,
+and the result of the call (the sum of the two numbers)
+replaces the value of the accumulator.
 At the end of the match,
 the accumulator with all sums is the final value.
 </p>
 
 <p>
+As another example,
+consider the following code fragment:
+</p>
+<pre class="example">
+local name = lpeg.C(lpeg.R("az")^1)
+local p = name * (lpeg.P("^") % string.upper)^-1
+print(p:match("count"))    --&gt; count
+print(p:match("count^"))   --&gt; COUNT
+</pre>
+<p>
+In the match against <code>"count"</code>,
+as there is no <code>"^"</code>,
+the optional accumulator capture does not match;
+so, the match results in its sole capture, a name.
+In the match against <code>"count^"</code>,
+the accumulator capture matches,
+so the function <code>string.upper</code>
+is called with the previous captured value (created by <code>name</code>)
+plus the string <code>"^"</code>;
+the function ignores its second argument and returns the first argument
+changed to upper case;
+that value then becomes the first and only
+capture value created by the match.
+</p>
+
+<p>
 Due to the nature of this capture,
 you should avoid using it in places where it is not clear
-what is its "previous" capture
-(e.g., directly nested in a <a href="#cap-string">string capture</a>
-or a <a href="#cap-num">numbered capture</a>).
-Due to implementation details,
+what is the "previous" capture,
+such as directly nested in a <a href="#cap-string">string capture</a>
+or a <a href="#cap-num">numbered capture</a>.
+(Note that these captures may not need to evaluate
+all their subcaptures to compute their results.)
+Moreover, due to implementation details,
 you should not use this capture directly nested in a
 <a href="#cap-s">substitution capture</a>.
+A simple and effective way to avoid these issues is
+to enclose the whole accumulation composition
+(including the capture that generates the initial value)
+into an anonymous <a href="#cap-g">group capture</a>.
 </p>
 
 
@@ -1056,7 +1065,8 @@ local name = lpeg.C(lpeg.alpha^1) * space
 local sep = lpeg.S(",;") * space
 local pair = name * "=" * space * name * sep^-1
 local list = lpeg.Ct("") * (pair % rawset)^0
-t = list:match("a=b, c = hi; next = pi")  --&gt; { a = "b", c = "hi", next = "pi" }
+t = list:match("a=b, c = hi; next = pi")
+        --&gt; { a = "b", c = "hi", next = "pi" }
 </pre>
 <p>
 Each pair has the format <code>name = name</code> followed by
@@ -1098,7 +1108,7 @@ by <code>sep</code>.
 If the split results in too many values,
 it may overflow the maximum number of values
 that can be returned by a Lua function.
-In this case,
+To avoid this problem,
 we can collect these values in a table:
 </p>
 <pre class="example">
@@ -1134,7 +1144,7 @@ end
 </pre>
 <p>
 This grammar has a straight reading:
-it matches <code>p</code> or skips one character and tries again.
+its sole rule matches <code>p</code> or skips one character and tries again.
 </p>
 
 <p>
@@ -1143,9 +1153,9 @@ If we want to know where the pattern is in the string
 we can add position captures to the pattern:
 </p>
 <pre class="example">
-local I = lpeg.Cp()
+local Cp = lpeg.Cp()
 function anywhere (p)
-  return lpeg.P{ I * p * I + 1 * lpeg.V(1) }
+  return lpeg.P{ Cp * p * Cp + 1 * lpeg.V(1) }
 end
 
 print(anywhere("world"):match("hello world!"))   --&gt; 7   12
@@ -1155,15 +1165,15 @@ print(anywhere("world"):match("hello world!"))   --&gt; 7   12
 Another option for the search is like this:
 </p>
 <pre class="example">
-local I = lpeg.Cp()
+local Cp = lpeg.Cp()
 function anywhere (p)
-  return (1 - lpeg.P(p))^0 * I * p * I
+  return (1 - lpeg.P(p))^0 * Cp * p * Cp
 end
 </pre>
 <p>
 Again the pattern has a straight reading:
 it skips as many characters as possible while not matching <code>p</code>,
-and then matches <code>p</code> (plus appropriate captures).
+and then matches <code>p</code> plus appropriate captures.
 </p>
 
 <p>

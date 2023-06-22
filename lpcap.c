@@ -477,7 +477,7 @@ static int addonestring (luaL_Buffer *b, CapState *cs, const char *what) {
       substcap(b, cs);  /* add capture directly to buffer */
       return 1;
     case Cacc:  /* accumulator capture? */
-      return luaL_error(cs->L, "accumulator capture inside substitution capture");
+      return luaL_error(cs->L, "invalid context for an accumulator capture");
     default: {
       lua_State *L = cs->L;
       int n = pushcapture(cs);

@@ -61,6 +61,20 @@ Constructions are listed in order of decreasing precedence.
 <table border="1">
 <tbody><tr><td><b>Syntax</b></td><td><b>Description</b></td></tr>
 <tr><td><code>( p )</code></td> <td>grouping</td></tr>
+<tr><td><code>&amp; p</code></td> <td>and predicate</td></tr>
+<tr><td><code>! p</code></td> <td>not predicate</td></tr>
+<tr><td><code>p1 p2</code></td> <td>concatenation</td></tr>
+<tr><td><code>p1 / p2</code></td> <td>ordered choice</td></tr>
+<tr><td><code>p ?</code></td> <td>optional match</td></tr>
+<tr><td><code>p *</code></td> <td>zero or more repetitions</td></tr>
+<tr><td><code>p +</code></td> <td>one or more repetitions</td></tr>
+<tr><td><code>p^num</code></td>
+      <td>exactly <code>num</code> repetitions</td></tr>
+<tr><td><code>p^+num</code></td>
+      <td>at least <code>num</code> repetitions</td></tr>
+<tr><td><code>p^-num</code></td>
+      <td>at most <code>num</code> repetitions</td></tr>
+<tr><td>(<code>name &lt;- p</code>)<sup>+</sup></td> <td>grammar</td></tr>
 <tr><td><code>'string'</code></td> <td>literal string</td></tr>
 <tr><td><code>"string"</code></td> <td>literal string</td></tr>
 <tr><td><code>[class]</code></td> <td>character class</td></tr>
@@ -69,22 +83,15 @@ Constructions are listed in order of decreasing precedence.
   <td>pattern <code>defs[name]</code> or a pre-defined pattern</td></tr>
 <tr><td><code>name</code></td><td>non terminal</td></tr>
 <tr><td><code>&lt;name&gt;</code></td><td>non terminal</td></tr>
+
 <tr><td><code>{}</code></td> <td>position capture</td></tr>
 <tr><td><code>{ p }</code></td> <td>simple capture</td></tr>
 <tr><td><code>{: p :}</code></td> <td>anonymous group capture</td></tr>
 <tr><td><code>{:name: p :}</code></td> <td>named group capture</td></tr>
 <tr><td><code>{~ p ~}</code></td> <td>substitution capture</td></tr>
 <tr><td><code>{| p |}</code></td> <td>table capture</td></tr>
-<tr><td><code>=name</code></td> <td>back reference
-</td></tr>
-<tr><td><code>p ?</code></td> <td>optional match</td></tr>
-<tr><td><code>p *</code></td> <td>zero or more repetitions</td></tr>
-<tr><td><code>p +</code></td> <td>one or more repetitions</td></tr>
-<tr><td><code>p^num</code></td> <td>exactly <code>n</code> repetitions</td></tr>
-<tr><td><code>p^+num</code></td>
-      <td>at least <code>n</code> repetitions</td></tr>
-<tr><td><code>p^-num</code></td>
-      <td>at most <code>n</code> repetitions</td></tr>
+<tr><td><code>=name</code></td> <td>back reference</td></tr>
+
 <tr><td><code>p -&gt; 'string'</code></td> <td>string capture</td></tr>
 <tr><td><code>p -&gt; "string"</code></td> <td>string capture</td></tr>
 <tr><td><code>p -&gt; num</code></td> <td>numbered capture</td></tr>
@@ -94,11 +101,8 @@ equivalent to <code>p / defs[name]</code></td></tr>
 equivalent to <code>lpeg.Cmt(p, defs[name])</code></td></tr>
 <tr><td><code>p ~&gt; name</code></td> <td>fold capture
 equivalent to <code>lpeg.Cf(p, defs[name])</code></td></tr>
-<tr><td><code>&amp; p</code></td> <td>and predicate</td></tr>
-<tr><td><code>! p</code></td> <td>not predicate</td></tr>
-<tr><td><code>p1 p2</code></td> <td>concatenation</td></tr>
-<tr><td><code>p1 / p2</code></td> <td>ordered choice</td></tr>
-<tr><td>(<code>name &lt;- p</code>)<sup>+</sup></td> <td>grammar</td></tr>
+<tr><td><code>p &gt;&gt; name</code></td> <td>accumulator capture
+equivalent to <code>(p % defs[name])</code></td></tr>
 </tbody></table>
 <p>
 Any space appearing in a syntax description can be
@@ -199,9 +203,10 @@ print(re.match("the number 423 is odd", "({%a+} / .)*"))
 --&gt; the    number    is    odd
 
 -- returns the first numeral in a string
-print(re.match("the number 423 is odd", "s <- {%d+} / . s"))
+print(re.match("the number 423 is odd", "s &lt;- {%d+} / . s"))
 --&gt; 423
 
+-- substitutes a dot for each vowel in a string
 print(re.gsub("hello World", "[aeiou]", "."))
 --&gt; h.ll. W.rld
 </pre>
@@ -415,6 +420,7 @@ prefix          &lt;- '&amp;' S prefix / '!' S prefix / suffix
 suffix          &lt;- primary S (([+*?]
                             / '^' [+-]? num
                             / '-&gt;' S (string / '{}' / name)
+                            / '&gt&gt;' S name
                             / '=&gt;' S name) S)*
 
 primary         &lt;- '(' exp ')' / string / class / defined
