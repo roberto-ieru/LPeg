@@ -1517,6 +1517,13 @@ c = re.compile([[
 ]], {tonumber = tonumber, add = function (a,b) return a + b end})
 assert(c:match("3 401 50") == 3 + 401 + 50)
 
+-- test for accumulator captures
+c = re.compile([[
+  S <- number (%s+ number >> add)*
+  number <- %d+ -> tonumber
+]], {tonumber = tonumber, add = function (a,b) return a + b end})
+assert(c:match("3 401 50") == 3 + 401 + 50)
+
 -- tests for look-ahead captures
 x = {re.match("alo", "&(&{.}) !{'b'} {&(...)} &{..} {...} {!.}")}
 checkeq(x, {"", "alo", ""})

@@ -141,7 +141,7 @@ local item = (defined + Range + m.C(any)) / m.P
 local Class =
     "["
   * (m.C(m.P"^"^-1))    -- optional complement symbol
-  * m.Cf(item * (item - "]")^0, mt.__add) /
+  * (item * ((item % mt.__add) - "]")^0) /
                           function (c, p) return c == "^" and any - p or p end
   * "]"
 
@@ -167,13 +167,13 @@ end
 
 local exp = m.P{ "Exp",
   Exp = S * ( m.V"Grammar"
-            + m.Cf(m.V"Seq" * ("/" * S * m.V"Seq")^0, mt.__add) );
-  Seq = m.Cf(m.Cc(m.P"") * m.V"Prefix"^0 , mt.__mul)
+            + m.V"Seq" * ("/" * S * m.V"Seq" % mt.__add)^0 );
+  Seq = (m.Cc(m.P"") * (m.V"Prefix" % mt.__mul)^0)
         * (#seq_follow + patt_error);
   Prefix = "&" * S * m.V"Prefix" / mt.__len
          + "!" * S * m.V"Prefix" / mt.__unm
          + m.V"Suffix";
-  Suffix = m.Cf(m.V"Primary" * S *
+  Suffix = m.V"Primary" * S *
           ( ( m.P"+" * m.Cc(1, mt.__pow)
             + m.P"*" * m.Cc(0, mt.__pow)
             + m.P"?" * m.Cc(-1, mt.__pow)
@@ -185,9 +185,10 @@ local exp = m.P{ "Exp",
                          + defwithfunc(mt.__div)
                          )
             + "=>" * S * defwithfunc(mm.Cmt)
+            + ">>" * S * defwithfunc(mt.__mod)
             + "~>" * S * defwithfunc(mm.Cf)
-            ) * S
-          )^0, function (a,b,f) return f(a,b) end );
+            ) % function (a,b,f) return f(a,b) end * S
+          )^0;
   Primary = "(" * m.V"Exp" * ")"
             + String / mm.P
             + Class
@@ -203,8 +204,7 @@ local exp = m.P{ "Exp",
             + (name * -arrow + "<" * name * ">") * m.Cb("G") / NT;
   Definition = name * arrow * m.V"Exp";
   Grammar = m.Cg(m.Cc(true), "G") *
-            m.Cf(m.V"Definition" / firstdef * m.Cg(m.V"Definition")^0,
-              adddef) / mm.P
+            ((m.V"Definition" / firstdef) * (m.V"Definition" % adddef)^0) / mm.P
 }
 
 local pattern = S * m.Cg(m.Cc(false), "G") * exp / mm.P * (-any + patt_error)
