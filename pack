@@ -1,5 +1,6 @@
 #!/bin/bash
-FILES="makefile HISTORY test.lua re.lua lpeg.html re.html lpeg-128.gif \
+FILES="makefile HISTORY README.md test.lua re.lua \
+  lpeg.html re.html lpeg-128.gif \
   lptypes.h lpcap.h lpcap.c lpcode.h lpcode.c lpprint.h lpprint.c \
   lptree.h lptree.c lpvm.h lpvm.c"
 NAME=lpeg-$1

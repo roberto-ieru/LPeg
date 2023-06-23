@@ -1,9 +1,8 @@
 LIBNAME = lpeg
 LUADIR = ./lua/
 
-# COPT = -O2 -DNDEBUG
-# COPT = -g
-COPT = -O0 -DLPEG_DEBUG -g
+COPT = -O2 -DNDEBUG
+# COPT = -O0 -DLPEG_DEBUG -g
 
 CWARNS = -Wall -Wextra -pedantic \
 	-Waggregate-return \
@@ -12,14 +11,17 @@ CWARNS = -Wall -Wextra -pedantic \
 	-Wdisabled-optimization \
 	-Wpointer-arith \
 	-Wshadow \
+	-Wredundant-decls \
 	-Wsign-compare \
 	-Wundef \
 	-Wwrite-strings \
 	-Wbad-function-cast \
 	-Wdeclaration-after-statement \
 	-Wmissing-prototypes \
+	-Wmissing-declarations \
 	-Wnested-externs \
 	-Wstrict-prototypes \
+	-Wc++-compat \
 # -Wunreachable-code \
 
 
