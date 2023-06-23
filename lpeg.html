@@ -444,7 +444,8 @@ letter = lower + upper
 
 <h3><a name="op-sub"></a><code>patt1 - patt2</code></h3>
 <p>
-Returns a pattern equivalent to <em>!patt2 patt1</em>.
+Returns a pattern equivalent to <em>!patt2 patt1</em>
+in the origial PEG notation.
 This pattern asserts that the input does not match
 <code>patt2</code> and then matches <code>patt1</code>.
 </p>
@@ -615,7 +616,7 @@ The following table summarizes the basic captures:
 <tr><td><a href="#cap-cc"><code>lpeg.Cc(values)</code></a></td>
     <td>the given values (matches the empty string)</td></tr>
 <tr><td><a href="#cap-f"><code>lpeg.Cf(patt, func)</code></a></td>
-  <td>a <em>folding</em> of the captures from <code>patt</code></td></tr>
+  <td>folding capture (<em>deprecated</em>)</td></tr>
 <tr><td><a href="#cap-g"><code>lpeg.Cg(patt [, key])</code></a></td>
     <td>the values produced by <code>patt</code>,
         optionally tagged with <code>key</code></td></tr>
@@ -638,7 +639,7 @@ or no value when <code>number</code> is zero.</td></tr>
 <tr><td><a href="#cap-func"><code>patt / function</code></a></td>
   <td>the returns of <code>function</code> applied to the captures
       of <code>patt</code></td></tr>
-<tr><td><a href="#cap-rep"><code>patt % function</code></a></td>
+<tr><td><a href="#cap-acc"><code>patt % function</code></a></td>
   <td>produces no value;
       it <em>accummulates</em> the captures from <code>patt</code>
       into the previous capture through <code>function</code>
@@ -739,52 +740,12 @@ produces all given values as its captured values.
 <h3><a name="cap-f"></a><code>lpeg.Cf (patt, func)</code></h3>
 <p>
 Creates a <em>fold capture</em>.
-If <code>patt</code> produces a list of captures
-<em>C<sub>1</sub> C<sub>2</sub> ... C<sub>n</sub></em>,
-this capture will produce the value
-<em>func(...func(func(C<sub>1</sub>, C<sub>2</sub>), C<sub>3</sub>)...,
-         C<sub>n</sub>)</em>,
-that is, it will <em>fold</em>
-(or <em>accumulate</em>, or <em>reduce</em>)
-the captures from <code>patt</code> using function <code>func</code>.
-</p>
-
-<p>
-This capture assumes that <code>patt</code> should produce
-at least one capture with at least one value (of any type),
-which becomes the initial value of an <em>accumulator</em>.
-(If you need a specific initial value,
-you may prefix a <a href="#cap-cc">constant capture</a> to <code>patt</code>.)
-For each subsequent capture,
-LPeg calls <code>func</code>
-with this accumulator as the first argument and all values produced
-by the capture as extra arguments;
-the first result from this call
-becomes the new value for the accumulator.
-The final value of the accumulator becomes the captured value.
-</p>
-
-<p>
-As an example,
-the following pattern matches a list of numbers separated
-by commas and returns their addition:
-</p>
-<pre class="example">
--- matches a numeral and captures its numerical value
-number = lpeg.R"09"^1 / tonumber
-
--- matches a list of numbers, capturing their values
-list = number * ("," * number)^0
-
--- auxiliary function to add two numbers
-function add (acc, newvalue) return acc + newvalue end
-
--- folds the list of numbers adding them
-sum = lpeg.Cf(list, add)
-
--- example of use
-print(sum:match("10,30,43"))   --&gt; 83
-</pre>
+This construction is deprecated;
+use an <a href="#cap-acc">accumulator pattern</a> instead.
+In general, a fold like
+<code>lpeg.Cf(p1 * p2^0, func)</code>
+can be translated to
+<code>(p1 * (p2 % func)^0)</code>.
 
 
 <h3><a name="cap-g"></a><code>lpeg.Cg (patt [, key])</code></h3>
@@ -895,7 +856,7 @@ there is no captured value.
 </p>
 
 
-<h3><a name="cap-rep"></a><code>patt % function</code></h3>
+<h3><a name="cap-acc"></a><code>patt % function</code></h3>
 <p>
 Creates an <em>accumulator capture</em>.
 This pattern behaves similarly to a
@@ -977,7 +938,10 @@ all their subcaptures to compute their results.)
 Moreover, due to implementation details,
 you should not use this capture directly nested in a
 <a href="#cap-s">substitution capture</a>.
-A simple and effective way to avoid these issues is
+You should also avoid a direct nesting of this capture inside
+a <a href="#cap-f">folding capture</a> (deprecated),
+as the folding will try to fold each individual accumulator capture.
+A simple and effective way to avoid all these issues is
 to enclose the whole accumulation composition
 (including the capture that generates the initial value)
 into an anonymous <a href="#cap-g">group capture</a>.
@@ -1411,7 +1375,7 @@ and the new term for each repetition.
 <h2><a name="download"></a>Download</h2>
 
 <p>LPeg 
-<a href="http://www.inf.puc-rio.br/~roberto/lpeg/lpeg-1.0.2.tar.gz">source code</a>.</p>
+<a href="http://www.inf.puc-rio.br/~roberto/lpeg/lpeg-1.1.0.tar.gz">source code</a>.</p>
 
 <p>
 Probably, the easiest way to install LPeg is with
