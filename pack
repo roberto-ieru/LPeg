@@ -1,8 +1,8 @@
 #!/bin/bash
 FILES="makefile HISTORY README.md test.lua re.lua \
   lpeg.html re.html lpeg-128.gif \
-  lptypes.h lpcap.h lpcap.c lpcode.h lpcode.c lpprint.h lpprint.c \
-  lptree.h lptree.c lpvm.h lpvm.c"
+  lpcap.h lpcode.h lpcset.h lpprint.h lptree.h lptypes.h lpvm.h \
+  lpcap.c lpcode.c lpcset.c lpprint.c lptree.c lpvm.c"
 NAME=lpeg-$1
 DIRN=versions/$NAME
 mkdir $DIRN
