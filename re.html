@@ -100,7 +100,7 @@ equivalent to <code>p / defs[name]</code></td></tr>
 <tr><td><code>p =&gt; name</code></td> <td>match-time capture
 equivalent to <code>lpeg.Cmt(p, defs[name])</code></td></tr>
 <tr><td><code>p ~&gt; name</code></td> <td>fold capture
-equivalent to <code>lpeg.Cf(p, defs[name])</code></td></tr>
+(deprecated)</td></tr>
 <tr><td><code>p &gt;&gt; name</code></td> <td>accumulator capture
 equivalent to <code>(p % defs[name])</code></td></tr>
 </tbody></table>
@@ -458,37 +458,9 @@ print(re.match(p, p))   -- a self description must match itself
 <h2><a name="license">License</a></h2>
 
 <p>
-Copyright &copy; 2008-2023 Lua.org, PUC-Rio.
-</p>
-<p>
-Permission is hereby granted, free of charge,
-to any person obtaining a copy of this software and
-associated documentation files (the "Software"),
-to deal in the Software without restriction,
-including without limitation the rights to use,
-copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software,
-and to permit persons to whom the Software is
-furnished to do so,
-subject to the following conditions:
-</p>
+This module is part of the <a href="lpeg.html">LPeg</a> package and shares
+its <a href="lpeg.html#license">license</a>.
 
-<p>
-The above copyright notice and this permission notice
-shall be included in all copies or substantial portions of the Software.
-</p>
-
-<p>
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED,
-INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-</p>
 
 </div> <!-- id="content" -->
 

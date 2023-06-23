@@ -1,3 +1,7 @@
+--
+-- Copyright 2007-2023, Lua.org & PUC-Rio  (see 'lpeg.html' for license)
+-- written by Roberto Ierusalimschy
+--
 
 -- imported functions and modules
 local tonumber, type, print, error = tonumber, type, print, error
@@ -9,14 +13,14 @@ local m = require"lpeg"
 -- on 'mm'
 local mm = m
 
--- pattern's metatable
+-- patterns' metatable
 local mt = getmetatable(mm.P(0))
 
 
+local version = _VERSION
 
 -- No more global accesses after this point
-local version = _VERSION
-if version == "Lua 5.2" then _ENV = nil end
+_ENV = nil     -- does no harm in Lua 5.1
 
 
 local any = m.P(1)
