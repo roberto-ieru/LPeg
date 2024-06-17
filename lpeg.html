@@ -53,19 +53,22 @@
 <h2><a name="intro">Introduction</a></h2>
 
 <p>
-<em>LPeg</em> is a new pattern-matching library for Lua,
+<em>LPeg</em> is a pattern-matching library for Lua,
 based on
 <a href="//bford.info/packrat/">
 Parsing Expression Grammars</a> (PEGs).
 This text is a reference manual for the library.
+For those starting with LPeg,
+<a href="https://www.inf.puc-rio.br/~roberto/docs/lpeg-primer.pdf">
+Mastering LPeg</a> presents a good tutorial.
 For a more formal treatment of LPeg,
 as well as some discussion about its implementation,
 see
 <a href="//www.inf.puc-rio.br/~roberto/docs/peg.pdf">
 A Text Pattern-Matching Tool based on Parsing Expression Grammars</a>.
-(You may also be interested in my
+You may also be interested in my
 <a href="//vimeo.com/1485123">talk about LPeg</a>
-given at the III Lua Workshop.)
+given at the III Lua Workshop.
 </p>
 
 <p>
@@ -664,13 +667,22 @@ produces values for each match.
 
 <p>
 Usually,
-LPeg does not specify when (and if) it evaluates its captures.
-(As an example,
-consider the pattern <code>lpeg.P"a" / func / 0</code>.
-Because the "division" by 0 instructs LPeg to throw away the
-results from the pattern,
-it is not specified whether LPeg will call <code>func</code>.)
+LPeg does not specify when, if, or how many times it evaluates its captures.
 Therefore, captures should avoid side effects.
+As an example,
+LPeg may or may not call <code>func</code> in the pattern
+<code>lpeg.P"a" / func / 0</code>,
+given that the <a href="#cap-num">"division" by 0</a>
+instructs LPeg to throw away the
+results from the pattern.
+Similarly, a capture nested inside a <a href="#cap-g">named group</a>
+may be evaluated only when that group is referred in a
+<a href="#cap-b">back capture</a>;
+if there are multiple back captures,
+the group may be evaluated multiple times.
+</p>
+
+<p>
 Moreover,
 captures cannot affect the way a pattern matches a subject.
 The only exception to this rule is the

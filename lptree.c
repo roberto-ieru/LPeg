@@ -1123,7 +1123,7 @@ static int verifyrule (lua_State *L, TTree *tree, unsigned short *passed,
         return verifyerror(L, passed, npassed);  /* error */
       else {
         passed[npassed++] = tree->key;  /* add rule to path */
-        /* return verifyrule(L, sib1(tree), passed, npassed); */
+        /* return verifyrule(L, sib1(tree), passed, npassed, nb); */
         tree = sib1(tree); goto tailcall;
       }
     case TGrammar:

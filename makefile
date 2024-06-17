@@ -1,5 +1,6 @@
 LIBNAME = lpeg
 LUADIR = ./lua/
+#LUADIR = /home/roberto/prj/lua/
 
 COPT = -O2 -DNDEBUG
 # COPT = -O0 -DLPEG_DEBUG -g

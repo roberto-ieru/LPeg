@@ -47,7 +47,7 @@ end
 print"General tests for LPeg library"
 
 assert(type(m.version) == "string")
-print(m.version)
+print(m.version, _VERSION)
 assert(m.type("alo") ~= "pattern")
 assert(m.type(io.input) ~= "pattern")
 assert(m.type(m.P"alo") == "pattern")
