@@ -157,7 +157,7 @@ static int addtoktable (lua_State *L, int idx) {
   if (lua_isnil(L, idx))  /* nil value? */
     return 0;
   else {
-    int n;
+    lua_Unsigned n;
     lua_getuservalue(L, -1);  /* get ktable from pattern */
     n = lua_rawlen(L, -1);
     if (n >= USHRT_MAX)
@@ -176,7 +176,7 @@ static int addtoktable (lua_State *L, int idx) {
 ** a table. Treat it as an empty table. In Lua 5.1, assumes that
 ** the environment has no numeric indices (len == 0)
 */
-static int ktablelen (lua_State *L, int idx) {
+static lua_Unsigned ktablelen (lua_State *L, int idx) {
   if (!lua_istable(L, idx)) return 0;
   else return lua_rawlen(L, idx);
 }
@@ -189,9 +189,9 @@ static int ktablelen (lua_State *L, int idx) {
 ** element was added, as there is no need to correct any index).
 */
 static int concattable (lua_State *L, int idx1, int idx2) {
-  int i;
-  int n1 = ktablelen(L, idx1);
-  int n2 = ktablelen(L, idx2);
+  unsigned i;
+  lua_Unsigned n1 = ktablelen(L, idx1);
+  lua_Unsigned n2 = ktablelen(L, idx2);
   if (n1 + n2 > USHRT_MAX)
     luaL_error(L, "too many Lua values in pattern");
   if (n1 == 0) return 0;  /* nothing to correct */
@@ -836,7 +836,7 @@ static int lp_divcapture (lua_State *L) {
     case LUA_TTABLE: return capture_aux(L, Cquery, 2);
     case LUA_TSTRING: return capture_aux(L, Cstring, 2);
     case LUA_TNUMBER: {
-      int n = lua_tointeger(L, 2);
+      lua_Integer n = lua_tointeger(L, 2);
       TTree *tree = newroot1sib(L, TCapture);
       luaL_argcheck(L, 0 <= n && n <= SHRT_MAX, 1, "invalid number");
       tree->cap = Cnum;
@@ -891,7 +891,7 @@ static int lp_poscapture (lua_State *L) {
 
 
 static int lp_argcapture (lua_State *L) {
-  int n = (int)luaL_checkinteger(L, 1);
+  lua_Integer n = luaL_checkinteger(L, 1);
   luaL_argcheck(L, 0 < n && n <= SHRT_MAX, 1, "invalid argument index");
   newemptycap(L, Carg, n);
   return 1;

@@ -13,6 +13,7 @@
 #include <string.h>
 
 #include "lua.h"
+#include "lauxlib.h"
 
 
 #define VERSION         "1.1.0"
