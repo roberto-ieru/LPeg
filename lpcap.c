@@ -342,6 +342,7 @@ int runtimecap (CapState *cs, Capture *close, const char *s, int *rem) {
   pushluaval(cs);  /* push function to be called */
   lua_pushvalue(L, SUBJIDX);  /* push original subject */
   lua_pushinteger(L, s - cs->s + 1);  /* push current position */
+  cs->firstcap = lua_gettop(L) + 1;
   n = pushnestedvalues(cs, 0);  /* push nested captures */
   lua_call(L, n + 2, LUA_MULTRET);  /* call dynamic function */
   if (id > 0) {  /* are there old dynamic captures to be removed? */

@@ -144,7 +144,7 @@ b = {
 assert(m.match(b, "(al())()"))
 assert(not m.match(b * eos, "(al())()"))
 assert(m.match(b * eos, "((al())()(é))"))
-assert(not m.match(b, "(al()()"))
+assert(not m.match(b, "(al()()"))    -- )
 
 assert(not m.match(letter^1 - "for", "foreach"))
 assert(m.match(letter^1 - ("for" * eos), "foreach"))
@@ -164,7 +164,7 @@ assert(m.match(caplookfor(letter^1), "   4achou123...") == "achou")
 a = {m.match(caplookfor(letter^1)^0, " two words, one more  ")}
 checkeq(a, {"two", "words", "one", "more"})
 
-assert(m.match( basiclookfor((#m.P(b) * 1) * m.Cp()), "  (  (a)") == 7)
+assert(m.match( basiclookfor((#m.P(b) * 1) * m.Cp()), "  (  (a)") == 7)  -- )
 
 a = {m.match(m.C(digit^1 * m.Cc"d") + m.C(letter^1 * m.Cc"l"), "123")}
 checkeq(a, {"123", "d"})
@@ -305,7 +305,7 @@ assert(p:match("AaBbCcDdBbCcDdDdDdBb") == 21)
 p = m.C(('ab' * ('c' * m.P'ef'^-1)^0)^-1)
 s = "abcefccefc"
 assert(s == p:match(s))
- 
+
 
 pi = "3.14159 26535 89793 23846 26433 83279 50288 41971 69399 37510"
 assert(m.match(m.Cs((m.P"1" / "a" + m.P"5" / "b" + m.P"9" / "c" + 1)^0), pi) ==
@@ -411,7 +411,7 @@ do
   print "testing large dynamic Cc"
   local lim = 2^16 - 1
   local c = 0
-  local function seq (n) 
+  local function seq (n)
     if n == 1 then c = c + 1; return m.Cc(c)
     else
       local m = math.floor(n / 2)
@@ -549,7 +549,7 @@ do
 
   p = #(m.P"abc" * m.B"c")
   assert(p:match("abc") == 1 and not p:match("ab"))
- 
+
   p = m.P{ "a" * m.V(2), m.P"b"^1 }
   checkerr("pattern may not have fixed length", m.B, p)
 
@@ -695,6 +695,18 @@ assert(m.match(m.Cmt(m.Cg(m.Carg(3), "a") *
 				  return i, 2*a + 3*b
                                 end) * "a",
                "a", 1, false, 100, 1000) == 2*1001 + 3*100)
+
+
+do
+  -- bug in 1.1.0:
+  -- accumulator pattern inside match-time capture
+  local p = m.C("a") * (m.C("b") % function(x) return x.."x" end)^0
+  p = m.Cmt(p, function (_, _, x) return true, x end)
+  assert(p:match("abbb") == "axxx")
+
+  p = m.Cmt(m.C("a") % function() return "x" end, function () return true end)
+  checkerr("no previous value", m.match, p, "a")
+end
 
 
 -- tests for Lua functions
@@ -858,7 +870,7 @@ s = string.rep('a', l) .. string.rep('b', l) .. string.rep('c', l)
 p = (m.C(m.P'a'^1) * m.C(m.P'b'^1) * m.C(m.P'c'^1)) / '%3%2%1'
 
 assert(p:match(s) == string.rep('c', l) ..
-                     string.rep('b', l) .. 
+                     string.rep('b', l) ..
                      string.rep('a', l))
 
 print"+"
@@ -1099,8 +1111,8 @@ assert(#x == 500)
 local function id(s, i, x)
   if x == 'a' then return i, 1, 3, 7
   else return nil, 2, 4, 6, 8
-  end   
-end     
+  end
+end
 
 p = ((m.P(id) * 1 + m.Cmt(2, id) * 1  + m.Cmt(1, id) * 1))^0
 assert(table.concat{p:match('abababab')} == string.rep('137', 4))
